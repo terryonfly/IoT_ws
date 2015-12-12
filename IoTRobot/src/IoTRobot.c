@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <signal.h>
+#include <math.h>
 
 #include "mraa.h"
 
@@ -24,11 +25,41 @@ int main() {
     signal(SIGTERM, cs);  //kill
 	tcpserver_init();
 	running = 1;
-	int i;
+	float a_x = 0.0;
+	float a_y = 0.0;
+	float a_z = 0.0;
+	float y_a = 0.0;
+	float y_l = 10.0;
 	while (running) {
 		unsigned char msg[12];
-		for (i = 0; i < 12; i ++) {
-			msg[i] = i;
+		int c_i = 0;
+		unsigned char *pdata;
+		int i;
+
+		y_a += 3;
+		if (y_a > 360.0) y_a = 0.0;
+		a_x = y_l * cos(y_a * M_PI / 180.0);
+		a_z = y_l * sin(y_a * M_PI / 180.0);
+
+		float angle_x = a_x;
+		pdata = ((unsigned char *)&angle_x);
+		for (i = 0; i < 4; i ++) {
+			msg[c_i ++] = *pdata ++;
+		}
+
+		a_y += 0.1;
+		if (a_y > 360.0) a_y = 0.0;
+
+		float angle_y = a_y;
+		pdata = ((unsigned char *)&angle_y);
+		for (i = 0; i < 4; i ++) {
+			msg[c_i ++] = *pdata ++;
+		}
+
+		float angle_z = a_z;
+		pdata = ((unsigned char *)&angle_z);
+		for (i = 0; i < 4; i ++) {
+			msg[c_i ++] = *pdata ++;
 		}
 		tcpserver_send(msg, 12);
 		usleep(10 * 1000);
