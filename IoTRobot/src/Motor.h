@@ -12,6 +12,6 @@ void motor_init(void);
 
 void motor_release(void);
 
-void motor_run(int persent);
+void motor_run(float persent);
 
 #endif /* MOTOR_H_ */
