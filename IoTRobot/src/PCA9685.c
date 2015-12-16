@@ -12,16 +12,14 @@
 #include "mraa.h"
 
 #include "PCA9685.h"
+#include "I2CBus.h"
 
-#define I2C_BUS 		0x06
 #define PCA9685_ADDR	0x40
 
-mraa_i2c_context i2c_context;
-
 void pca_init(void) {
-	i2c_context = mraa_i2c_init(I2C_BUS);
-	mraa_i2c_frequency(i2c_context, MRAA_I2C_FAST);
-
+	mraa_i2c_context i2c_context = i2cbus_get_instance();
+	if (i2c_context == NULL)
+		perror("Err : i2c_context = NULL");
 	if (mraa_i2c_address(i2c_context, PCA9685_ADDR) != MRAA_SUCCESS)
 		printf("can not found 0x%02x sensor\n", PCA9685_ADDR);
 
@@ -46,11 +44,17 @@ void pca_init(void) {
 }
 
 void pca_release(void) {
-	mraa_i2c_stop(i2c_context);
+	mraa_i2c_context i2c_context = i2cbus_get_instance();
+	if (i2c_context == NULL)
+		perror("Err : i2c_context = NULL");
+	if (mraa_i2c_address(i2c_context, PCA9685_ADDR) != MRAA_SUCCESS)
+		printf("can not found 0x%02x sensor\n", PCA9685_ADDR);
 }
 
 void pca_run(float pwm) {
-	printf("%.3f\n", pwm);
+	mraa_i2c_context i2c_context = i2cbus_get_instance();
+	if (i2c_context == NULL)
+		perror("Err : i2c_context = NULL");
 	if (mraa_i2c_address(i2c_context, PCA9685_ADDR) != MRAA_SUCCESS)
 		printf("can not found 0x%02x sensor\n", PCA9685_ADDR);
 

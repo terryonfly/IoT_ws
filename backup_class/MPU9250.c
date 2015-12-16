@@ -12,6 +12,7 @@
 #include "mraa.h"
 
 #include "MPU9250.h"
+#include "I2CBus.h"
 #include "TCPServer.h"
 
 
@@ -167,25 +168,29 @@
 
 #define I2C_BUS 		0x06
 
-mraa_i2c_context i2c_context;
-
 mraa_result_t mpu_i2c_write_byte_data(mraa_i2c_context dev, const uint8_t dev_addr, const uint8_t reg_addr, const uint8_t data) {
-	if (mraa_i2c_address(i2c_context, dev_addr) != MRAA_SUCCESS)
+	if (mraa_i2c_address(dev, dev_addr) != MRAA_SUCCESS)
 		printf("can not found 0x%02x sensor\n", dev_addr);
-	mraa_result_t ret = mraa_i2c_write_byte_data(i2c_context, data, reg_addr);
+	mraa_result_t ret = mraa_i2c_write_byte_data(dev, data, reg_addr);
 //	printf("write to 0x%02x 0x%02x -> 0x%02x %s\n", dev_addr, reg_addr, data, (ret == MRAA_SUCCESS) ? "SUCCESS" : "FAIL");
 	return ret;
 }
 
 uint8_t mpu_i2c_read_byte_data(mraa_i2c_context dev, const uint8_t dev_addr, const uint8_t reg_addr) {
-	if (mraa_i2c_address(i2c_context, dev_addr) != MRAA_SUCCESS)
+	if (mraa_i2c_address(dev, dev_addr) != MRAA_SUCCESS)
 			printf("can not found 0x%02x sensor\n", dev_addr);
-	uint8_t data = mraa_i2c_read_byte_data(i2c_context, reg_addr);
+	uint8_t data = mraa_i2c_read_byte_data(dev, reg_addr);
 //	printf("read from 0x%02x 0x%02x <- 0x%02x\n", dev_addr, reg_addr, data);
 	return data;
 }
 
 void mpu_set_bypass(uint8_t status) {
+	mraa_i2c_context i2c_context = i2cbus_get_instance();
+	if (i2c_context == NULL) {
+		perror("Err : i2c_context = NULL");
+		return;
+	}
+
 	printf("mpu_set_bypass : %d\n", status);
     uint8_t pincfg;
     uint8_t usrctl;
@@ -204,8 +209,11 @@ void mpu_set_bypass(uint8_t status) {
 }
 
 void mpu_init(void) {
-	i2c_context = mraa_i2c_init(I2C_BUS);
-	mraa_i2c_frequency(i2c_context, MRAA_I2C_FAST);
+	mraa_i2c_context i2c_context = i2cbus_get_instance();
+	if (i2c_context == NULL) {
+		perror("Err : i2c_context = NULL");
+		return;
+	}
 
 	// Init
 	uint8_t i = 0;
@@ -239,10 +247,20 @@ void mpu_init(void) {
 }
 
 void mpu_release(void) {
-	mraa_i2c_stop(i2c_context);
+	mraa_i2c_context i2c_context = i2cbus_get_instance();
+	if (i2c_context == NULL) {
+		perror("Err : i2c_context = NULL");
+		return;
+	}
 }
 
 void mpu_run(void) {
+	mraa_i2c_context i2c_context = i2cbus_get_instance();
+	if (i2c_context == NULL) {
+		perror("Err : i2c_context = NULL");
+		return;
+	}
+
 	// Accelerometer
 	int16_t acc_x, acc_y, acc_z;
 	acc_x = mpu_i2c_read_byte_data(i2c_context, MPU9250_I2C_ADDR, 0x3B) << 8 |

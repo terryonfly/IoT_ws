@@ -6,6 +6,7 @@
 #include "mraa.h"
 
 #include "TCPServer.h"
+#include "I2CBus.h"
 #include "PCA9685.h"
 
 int running = 1;
@@ -66,11 +67,14 @@ int main() {
     signal(SIGINT, cs);  //ctrl+c
     signal(SIGTERM, cs);  //kill
 	mraa_init();
-	pca_init();
 	tcpserver_init();
+	i2cbus_init();
+	max_init();
+	pca_init();
 	float pwm_persent = 0.0f;
 	int bak = 0;
 	while (running) {
+		max_run();
 		if (bak) {
 			pwm_persent += 0.001f;
 			if (pwm_persent >= 1.0f) bak = !bak;
@@ -79,9 +83,11 @@ int main() {
 			if (pwm_persent <= 0.0f) bak = !bak;
 		}
 		pca_run(pwm_persent);
-		usleep(10 * 1000);
+		usleep(500 * 1000);
 	}
 	pca_release();
+	max_release();
+	i2cbus_release();
 	tcpserver_release();
 	printf("==== robot end ====\n");
 	return 0;
