@@ -14,11 +14,10 @@
 #include "TenDofSensor.h"
 
 #define I2C_BUS 		0x06
-#define L3G4200D_ADDR 	0x68
-
+#define L3G4200D_ADDR 	0x69
 #define ADXL345_ADDR 	0x53
-#define HMC5883L_ADDR 	0x0C
-#define BMP085_ADDR 	0x0C
+#define HMC5883L_ADDR 	0x1E
+#define BMP085_ADDR 	0x77
 
 mraa_i2c_context i2c_context;
 
@@ -41,7 +40,10 @@ uint8_t tendof_i2c_read_byte_data(mraa_i2c_context dev, const uint8_t dev_addr, 
 void tendof_init(void) {
 	i2c_context = mraa_i2c_init(I2C_BUS);
 	mraa_i2c_frequency(i2c_context, MRAA_I2C_STD);
+	usleep(100 * 1000);
 	tendof_i2c_write_byte_data(i2c_context, L3G4200D_ADDR, L3G_CTRL_REG1, 0x0F);
+	tendof_i2c_write_byte_data(i2c_context, ADXL345_ADDR, 0x2D, 0x08);
+	tendof_i2c_write_byte_data(i2c_context, HMC5883L_ADDR, 0x02, 0x00);
 }
 
 void tendof_release(void) {

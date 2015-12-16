@@ -6,8 +6,7 @@
 #include "mraa.h"
 
 #include "TCPServer.h"
-#include "TenDofSensor.h"
-#include "Motor.h"
+#include "PCA9685.h"
 
 int running = 1;
 
@@ -67,20 +66,22 @@ int main() {
     signal(SIGINT, cs);  //ctrl+c
     signal(SIGTERM, cs);  //kill
 	mraa_init();
-	motor_init();
-	tendof_init();
+	pca_init();
 	tcpserver_init();
-	float pwm_persent = 0.0;
+	float pwm_persent = 0.0f;
+	int bak = 0;
 	while (running) {
-//		sync_status();
-		tendof_run();
-		pwm_persent += 0.001;
-		if (pwm_persent > 1.0) pwm_persent = 0.0;
-		motor_run(pwm_persent);
-		usleep(500 * 1000);
+		if (bak) {
+			pwm_persent += 0.001f;
+			if (pwm_persent >= 1.0f) bak = !bak;
+		} else {
+			pwm_persent -= 0.001f;
+			if (pwm_persent <= 0.0f) bak = !bak;
+		}
+		pca_run(pwm_persent);
+		usleep(10 * 1000);
 	}
-	motor_release();
-	tendof_release();
+	pca_release();
 	tcpserver_release();
 	printf("==== robot end ====\n");
 	return 0;
