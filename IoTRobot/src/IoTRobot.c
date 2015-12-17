@@ -7,6 +7,7 @@
 
 #include "TCPServer.h"
 #include "I2CBus.h"
+#include "MAX21100.h"
 #include "PCA9685.h"
 
 int running = 1;
@@ -83,7 +84,7 @@ int main() {
 			if (pwm_persent <= 0.0f) bak = !bak;
 		}
 		pca_run(pwm_persent);
-		usleep(500 * 1000);
+		usleep(100 * 1000);
 	}
 	pca_release();
 	max_release();
