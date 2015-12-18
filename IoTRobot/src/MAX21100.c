@@ -14,95 +14,116 @@
 #include "MAX21100.h"
 #include "I2CBus.h"
 
-uint8_t Gscale = GFS_250DPS;  // Gyro full scale
-uint8_t Godr = GODR_250Hz;    // Gyro sample rate
-uint8_t Gbw = GBW_22Hz;       // Gyro bandwidth
-uint8_t Ascale = AFS_2G;      // Accel full scale
-uint8_t Aodr = AODR_250Hz;    // Accel sample rate
-uint8_t Abw = ABW_div9;       // Accel bandwidth, accel sample rate divided by ABW_divx
-uint8_t MSodr = MODR_div16;   // Select magnetometer ODR as Aodr/MODR_divx
-uint8_t powerSelect = 0x00;   // no DSYNC enable or usage
-uint8_t powerMode = accelnormalgyronormalmode;  // specify power mode for accel + gyro
-
-// Initialize the MAX21100 for bypass mode operations (read from magnetometer directly via microcontroller
-void initbypassMAX21100(mraa_i2c_context i2c_context) {
-	// Enable power select to control power mode from DSYNC (enable = 0x80, disable = 0x00)
-	// choose power mode (accelnormal_gyronormal = 0xF in bits 6:3
-	// Enable all axes (z = bit 2, y = bit 1, x = bit 0)
-	mraa_i2c_write_byte_data(i2c_context, powerSelect | powerMode << 3 | 0x07, MAX21100_POWER_CFG);
-
-	// Configure gyro
-	// Select gyro bandwidth (bits 5:2) and gyro full scale (bits 1:0)
-	mraa_i2c_write_byte_data(i2c_context, Gbw << 2 | Gscale, MAX21100_GYRO_CFG1);
-	// Select gyro ODR (bits 1:0)
-	mraa_i2c_write_byte_data(i2c_context, Godr, MAX21100_GYRO_CFG2);
-
-	// Configure the accelerometer
-	// Select accel full scale (bits 7:6) and enable all three axes (bits 2:0)
-	mraa_i2c_write_byte_data(i2c_context, Ascale << 6 | 0x07, MAX21100_PWR_ACC_CFG);
-	// Select accel band width (bits 5:4) and accel ODR (bits 3:0)
-	mraa_i2c_write_byte_data(i2c_context, Abw << 4 | Aodr, MAX21100_ACC_CFG1);
-
-	// Data ready configuration
-	// Enable bypass mode to read magnetometer directly from microcontroller (bit 7 = 1)
-	// Clear data ready bits when status register is read (bits 3:2 = 10)
-	// Enable fine temperature mode, enable temperature sensor (bits 1:0 = 01)
-	mraa_i2c_write_byte_data(i2c_context, 0x80 | 0x08 | 0x01, MAX21100_DR_CFG);
- }
-
-// Initialize the MAX21100 for master mode operations (read from magnetometer from MAX21100 master)
-void initmasterMAX21100(mraa_i2c_context i2c_context) {
-	// Enable power select to control power mode from DSYNC (enable = 0x80, disable = 0x00)
-	// choose power mode (accelnormal_gyronormal = 0xFF in bits 6:3
-	// Enable all axes (z = bit 2, y = bit 1, x = bit 0)
-	mraa_i2c_write_byte_data(i2c_context, powerSelect | powerMode << 3 | 0x07, MAX21100_POWER_CFG);
-
-	// Configure gyro
-	// Select gyro bandwidth (bits 5:2) and gyro full scale (bits 1:0)
-	mraa_i2c_write_byte_data(i2c_context, Gbw << 2 | Gscale, MAX21100_GYRO_CFG1);
-	// Select gyro ODR (bits 1:0)
-	mraa_i2c_write_byte_data(i2c_context, Godr, MAX21100_GYRO_CFG2);
-
-	// Configure the accelerometer
-	// Select accel full scale (bits 7:6) and enable all three axes (bits 2:0)
-	mraa_i2c_write_byte_data(i2c_context, Ascale << 6 | 0x07, MAX21100_PWR_ACC_CFG);
-	// Select accel band width (bits 5:4) and accel ODR (bits 3:0)
-	mraa_i2c_write_byte_data(i2c_context, Abw << 4 | Aodr, MAX21100_ACC_CFG1);
-
-	// Configure magnetometer in slave mode
-	mraa_i2c_write_byte_data(i2c_context, MSodr << 1, MAX21100_ACC_CFG2);           // slave magnetometer ODR
-	// magnetometer slave enable (bit 7 = 1), byte order swap (LSB first, bit 6 = 1), byte length = 6
-	mraa_i2c_write_byte_data(i2c_context, 0x80 | 0x40 | 0x06, MAX21100_MAG_SLV_CFG);
-	mraa_i2c_write_byte_data(i2c_context, LIS3MDL_ADDR, MAX21100_MAG_SLV_ADD);  // magnetometer slave address
-	mraa_i2c_write_byte_data(i2c_context, LIS3MDL_OUT_X_L, MAX21100_MAG_SLV_REG);  // magnetometer slave first data register
-	mraa_i2c_write_byte_data(i2c_context, 0x00, MAX21100_MAG_MAP_REG);             // magnetometer has inverted x,y axes wrt the MAX21100
-
-	// Data ready configuration
-	// Enable master mode to read magnetometer from MAX21100 (bit 7 = 0, default)
-	// Clear data ready bits when status register is read (bits 3:2 = 10)
-	// Enable fine temperature mode, enable temperature sensor (bits 1:0 = 01)
-	mraa_i2c_write_byte_data(i2c_context, 0x08 | 0x01, MAX21100_DR_CFG);
-}
-
-void check_i2c_addrs(mraa_i2c_context i2c_context) {
-	int i;
-	for (i = 0; i < 255; i++) {
-		if (mraa_i2c_address(i2c_context, i) != MRAA_SUCCESS) {
-			printf("can not found 0x%02x sensor\n", i);
-		} else {
-			uint8_t who_am_i_val = mraa_i2c_read_byte_data(i2c_context, 0x20);
-			printf("MAX 0x%02x who_am_i_val = 0x%02x\n", i, who_am_i_val);
-		}
-	}
-}
+#define MAX21100_ADDR		0x58
+#define HMC5983_ADDR 		0x1E
 
 void max_bank_select(mraa_i2c_context i2c_context, uint8_t bank) {
+	if (mraa_i2c_address(i2c_context, MAX21100_ADDR) != MRAA_SUCCESS)
+		printf("can not found 0x%02x sensor\n", MAX21100_ADDR);
 	if (bank < 0x00 || bank > 0x02) return;
-	uint8_t bank_select_val = mraa_i2c_read_byte_data(i2c_context, MAX21100_BANK_SELECT);
+	uint8_t bank_select_val = mraa_i2c_read_byte_data(i2c_context, 0x22);// BANK_SELECT
 	bank_select_val &= 0xF0;
 	bank_select_val |= bank;
 	printf("bank_select = %02x\n", bank_select_val);
-	mraa_i2c_write_byte_data(i2c_context, bank_select_val, MAX21100_BANK_SELECT);
+	mraa_i2c_write_byte_data(i2c_context, bank_select_val, 0x22);// BANK_SELECT
+}
+
+void max_init_bypass(mraa_i2c_context i2c_context) {
+	if (mraa_i2c_address(i2c_context, MAX21100_ADDR) != MRAA_SUCCESS)
+		printf("can not found 0x%02x sensor\n", MAX21100_ADDR);
+	max_bank_select(i2c_context, 0);
+	// accelero normal + gyro normal mode
+	// SNS_EN_Z, SNS_EN_Y, SNS_EN_X = enabled
+	mraa_i2c_write_byte_data(i2c_context, 0b01111111, 0x00);// POWER_CFG
+	// SELF_TEST = disabled
+	// SNS_LPF_CFG = 250Hz
+	// SNS_DOUT_FSC = 2000dps
+	mraa_i2c_write_byte_data(i2c_context, 0b00110100, 0x01);// GYRO_CFG1
+	// SNS_GYR_OIS_LPF = 0
+	// SNS_DOUT_CFG = 0
+	// SNS_ODR = 250Hz
+	mraa_i2c_write_byte_data(i2c_context, 0b00000101, 0x02);// GYRO_CFG2
+	// SNS_ACC_FSC = 2g
+	// ACC_SELF_TEST = desabled
+	// SNS_EN_Z, SNS_EN_Y, SNS_EN_X = enabled
+	mraa_i2c_write_byte_data(i2c_context, 0b11000111, 0x04);// PWR_ACC_CFG
+	// SNS_ACC_HPF_CFG = ODR / 400
+	// SNS_ACC_LPF_CFG = ODR / 9
+	// SNS_ACC_ODR = 250Hz
+	mraa_i2c_write_byte_data(i2c_context, 0b00100011, 0x05);// ACC_CFG1
+	// BYP_EN = bypass
+	// RW_SEL = write
+	// SNGLE_EN = disable single R or single W
+	// DR_RST_MODE = STATUS - DATA_READY
+	// COARSE_TEMP = fine
+	// TEMP_EN = enabled
+	mraa_i2c_write_byte_data(i2c_context, 0b10001001, 0x13);// DR_CFG
+ }
+
+void max_init_master(mraa_i2c_context i2c_context) {
+	if (mraa_i2c_address(i2c_context, MAX21100_ADDR) != MRAA_SUCCESS)
+		printf("can not found 0x%02x sensor\n", MAX21100_ADDR);
+	max_bank_select(i2c_context, 0);
+	// accelero normal + gyro normal mode
+	// SNS_EN_Z, SNS_EN_Y, SNS_EN_X = enabled
+	mraa_i2c_write_byte_data(i2c_context, 0b01111111, 0x00);// POWER_CFG
+	// SELF_TEST = disabled
+	// SNS_LPF_CFG = 250Hz
+	// SNS_DOUT_FSC = 2000dps
+	mraa_i2c_write_byte_data(i2c_context, 0b00110100, 0x01);// GYRO_CFG1
+	// SNS_GYR_OIS_LPF = 0
+	// SNS_DOUT_CFG = 0
+	// SNS_ODR = 250Hz
+	mraa_i2c_write_byte_data(i2c_context, 0b00000101, 0x02);// GYRO_CFG2
+	// SNS_ACC_FSC = 2g
+	// ACC_SELF_TEST = desabled
+	// SNS_EN_Z, SNS_EN_Y, SNS_EN_X = enabled
+	mraa_i2c_write_byte_data(i2c_context, 0b11000111, 0x04);// PWR_ACC_CFG
+	// SNS_ACC_HPF_CFG = ODR / 400
+	// SNS_ACC_LPF_CFG = ODR / 9
+	// SNS_ACC_ODR = 250Hz
+	mraa_i2c_write_byte_data(i2c_context, 0b00100011, 0x05);// ACC_CFG1
+	// SNS_MAG_ODR = ACC_ODR / 16
+	// SNS_ACC_LPF_CFG = disabled
+	mraa_i2c_write_byte_data(i2c_context, 0b00001000, 0x06);// ACC_CFG2
+	// MAG_EN = enabled
+	// MAG_SWAP = MSB First
+	// MAG_SAFE = Reg On
+	// MAG_GRP = Group Even
+	// I2C_STD = 400kHz
+	// MAG_I2C_LEN = 6
+	mraa_i2c_write_byte_data(i2c_context, 0b10000110, 0x07);// MAG_SLV_CFG
+	mraa_i2c_write_byte_data(i2c_context, HMC5983_ADDR, 0x08);// MAG_SLV_ADD
+	mraa_i2c_write_byte_data(i2c_context, 0x03, 0x09);// MAG_SLV_REG
+	// MAG_CH_MAP : [Xi, Yi, Zi] <= [A, C, B]
+	// INV_Z = 0
+	// INV_Y = 0
+	// INV_X = 0
+	mraa_i2c_write_byte_data(i2c_context, 0b00001000, 0x0A);// MAG_MAP_REG
+	// BYP_EN = I2C_MASTER active
+	// RW_SEL = write
+	// SNGLE_EN = disable single R or single W
+	// DR_RST_MODE = STATUS - DATA_READY
+	// COARSE_TEMP = fine
+	// TEMP_EN = enabled
+	mraa_i2c_write_byte_data(i2c_context, 0b00001001, 0x13);// DR_CFG
+}
+
+void hmc_init(mraa_i2c_context i2c_context) {
+	if (mraa_i2c_address(i2c_context, HMC5983_ADDR) != MRAA_SUCCESS)
+		printf("can not found 0x%02x sensor\n", HMC5983_ADDR);
+	// enable temperature sensor = 0
+	// number of samples averaged per measurement output = 1
+	// Data Output Rate = 220Hz
+	// Measurement Configuration = Normal
+	mraa_i2c_write_byte_data(i2c_context, 0b00011100, 0x00);// Configuration Register A
+	// Gain Configuration = 1090LSb/Gauss
+	mraa_i2c_write_byte_data(i2c_context, 0b00100000, 0x01);// Configuration Register B
+	// High Speed mode(3400 kHz) = 0
+	// Lowest power mode = 0
+	// SPI serial interface mode = 4-wire SPI interface
+	// Mode Select = Continuous-Measurement Mode
+	mraa_i2c_write_byte_data(i2c_context, 0b00000000, 0x02);// Mode Register
 }
 
 void max_init(void) {
@@ -115,12 +136,16 @@ void max_init(void) {
 	uint8_t who_am_i_val = mraa_i2c_read_byte_data(i2c_context, 0x20);
 	printf("MAX who_am_i_val = 0x%02x\n", who_am_i_val);
 
-	max_bank_select(i2c_context, 0);
-	mraa_i2c_write_byte_data(i2c_context, 0x07, 0x00);// MAX21100_POWER_CFG
-//	mraa_i2c_write_byte_data(i2c_context, 0x10, 0x01);// MAX21100_GYRO_CFG1 10Hz BW
-//	mraa_i2c_write_byte_data(i2c_context, 0x01, 0x02);// MAX21100_GYRO_CFG2 4KHz ODR
-	mraa_i2c_write_byte_data(i2c_context, 0xC7, 0x04);
-	mraa_i2c_write_byte_data(i2c_context, 0x17, 0x00);// MAX21100_POWER_CFG
+	max_init_bypass(i2c_context);
+	hmc_init(i2c_context);
+	max_init_master(i2c_context);
+	max_bank_select(i2c_context, 2);
+	// FUS_ODR = SNS_ODR / 1
+	// FUS_GR_HD = 1
+	// FUS_AUTO_MODE = 1
+	// FUS_MODE = Gryo + Accelerometer + Magnetometer
+	// FUS_EN = 1
+	mraa_i2c_write_byte_data(i2c_context, 0b00011001, 0x1C);// FUS_CFG_0
 }
 
 void max_release(void) {
@@ -138,14 +163,12 @@ void max_run() {
 	if (mraa_i2c_address(i2c_context, MAX21100_ADDR) != MRAA_SUCCESS)
 		printf("can not found 0x%02x sensor\n", MAX21100_ADDR);
 
-	while (mraa_i2c_read_byte_data(i2c_context, 35) == 0x00) {
-		printf("---\n");
-		usleep(1000);
-	}
+	max_bank_select(i2c_context, 0);
+	uint8_t status = mraa_i2c_read_byte_data(i2c_context, 0x23);
 
 	int8_t bluk_data[20];
-	int actual = mraa_i2c_read_bytes_data(i2c_context, 0x24, bluk_data, 20);
-	printf("=== [%d] ===\n", actual);
+	int actual = mraa_i2c_read_bytes_data(i2c_context, 0x24, (uint8_t *)bluk_data, 20);
+	printf("=== [%d] === 0x%02x\n", actual, status);
 
 	float gyr_x = (float)(
 			bluk_data[0] << 8 |
@@ -181,5 +204,32 @@ void max_run() {
 	printf("acc : %.2f, %.2f, %.2f\n", acc_x, acc_y, acc_z);
 	printf("mag : %.2f, %.2f, %.2f\n", mag_x, mag_y, mag_z);
 	printf("temp : %.2f degC\n", temp);
+
+	max_bank_select(i2c_context, 2);
+	int8_t quaternion_bluk_data[28];
+	actual = mraa_i2c_read_bytes_data(i2c_context, 0x00, (uint8_t *)quaternion_bluk_data, 28);
+	printf("==%d==\n", actual);
+	int16_t quat[4];
+	quat[0] =
+			quaternion_bluk_data[0] << 8 |
+			quaternion_bluk_data[1];
+	quat[1] =
+			quaternion_bluk_data[2] << 8 |
+			quaternion_bluk_data[3];
+	quat[2] =
+			quaternion_bluk_data[4] << 8 |
+			quaternion_bluk_data[5];
+	quat[3] =
+			quaternion_bluk_data[6] << 8 |
+			quaternion_bluk_data[7];
+	float norm = sqrt(quat[0]*quat[0] + quat[1]*quat[1] + quat[2]*quat[2] + quat[3]*quat[3]);
+	norm = 1.0f/norm;
+
+	float quaternion[4];
+	quaternion[0] = (float) quat[0] * norm;
+	quaternion[1] = (float) quat[1] * norm;
+	quaternion[2] = (float) quat[2] * norm;
+	quaternion[3] = (float) quat[3] * norm;
+	printf("qua : %.2f, %.2f, %.2f, %.2f\n", quaternion[0], quaternion[1], quaternion[2], quaternion[3]);
 }
 
