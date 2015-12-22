@@ -193,7 +193,7 @@ void mpu_set_bypass(uint8_t status) {
 
 	printf("mpu_set_bypass : %d\n", status);
     uint8_t pincfg;
-    uint8_t usrctl;
+//    uint8_t usrctl;
     pincfg = mpu_i2c_read_byte_data(i2c_context, MPU9250_I2C_ADDR, MPU9250_INT_PIN_CFG);
 //    usrctl = mpu_i2c_read_byte_data(i2c_context, MPU9250_I2C_ADDR, MPU9250_USER_CTRL);
     if (status) {
@@ -238,9 +238,9 @@ void mpu_init(void) {
 	mpu_i2c_write_byte_data(i2c_context, MPU9250_I2C_ADDR, MPU9250_PWR_MGMT_1, 0x80);
 	usleep(1 * 1000);
 	mpu_i2c_write_byte_data(i2c_context, MPU9250_I2C_ADDR, MPU9250_USER_CTRL, 0x00);
-	mpu_set_bypass(1);
-	mpu_i2c_write_byte_data(i2c_context, AK8963_I2C_ADDR, AK8963_CNTL1, 0x16);
-	mpu_set_bypass(0);
+//	mpu_set_bypass(1);
+//	mpu_i2c_write_byte_data(i2c_context, AK8963_I2C_ADDR, AK8963_CNTL1, 0x16);
+//	mpu_set_bypass(0);
     for (i = 0; i < sizeof(Mpu9250_InitData) / sizeof(Smpu9250_InitData); i++) {
     	mpu_i2c_write_byte_data(i2c_context, MPU9250_I2C_ADDR, Mpu9250_InitData[i].res_addr, Mpu9250_InitData[i].value);
     }
@@ -303,20 +303,20 @@ void mpu_run(void) {
 	float magnetometer_y = (float)mag_y * MPU9250M_4800uT;
 	float magnetometer_z = (float)mag_z * MPU9250M_4800uT;
 
-	printf("tempr : %f degC\n",
-			temperature);
-	printf("accel : %6.2f %6.2f %6.2f\n",
-			accelerometer_x,
-			accelerometer_y,
-			accelerometer_z);
-	printf("gyros : %6.2f %6.2f %6.2f\n",
-			gyroscope_x,
-			gyroscope_y,
-			gyroscope_z);
-	printf("magen : %6.2f %6.2f %6.2f\n",
-			magnetometer_x,
-			magnetometer_y,
-			magnetometer_z);
+//	printf("tempr : %f degC\n",
+//			temperature);
+//	printf("accel : %6.2f %6.2f %6.2f\n",
+//			accelerometer_x,
+//			accelerometer_y,
+//			accelerometer_z);
+//	printf("gyros : %6.2f %6.2f %6.2f\n",
+//			gyroscope_x,
+//			gyroscope_y,
+//			gyroscope_z);
+//	printf("magen : %6.2f %6.2f %6.2f\n",
+//			magnetometer_x,
+//			magnetometer_y,
+//			magnetometer_z);
 
 	/* ===================== */
 

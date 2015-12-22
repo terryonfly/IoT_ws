@@ -76,15 +76,15 @@ int main() {
 	int bak = 0;
 	while (running) {
 		max_run();
-		if (bak) {
-			pwm_persent += 0.001f;
-			if (pwm_persent >= 1.0f) bak = !bak;
-		} else {
-			pwm_persent -= 0.001f;
-			if (pwm_persent <= 0.0f) bak = !bak;
-		}
-		pca_run(pwm_persent);
-		usleep(200 * 1000);
+//		if (bak) {
+//			pwm_persent += 0.001f;
+//			if (pwm_persent >= 1.0f) bak = !bak;
+//		} else {
+//			pwm_persent -= 0.001f;
+//			if (pwm_persent <= 0.0f) bak = !bak;
+//		}
+//		pca_run(pwm_persent);
+		usleep(10 * 1000);
 	}
 	pca_release();
 	max_release();
