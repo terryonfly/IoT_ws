@@ -172,7 +172,7 @@ mraa_result_t mpu_i2c_write_byte_data(mraa_i2c_context dev, const uint8_t dev_ad
 	if (mraa_i2c_address(dev, dev_addr) != MRAA_SUCCESS)
 		printf("can not found 0x%02x sensor\n", dev_addr);
 	mraa_result_t ret = mraa_i2c_write_byte_data(dev, data, reg_addr);
-//	printf("write to 0x%02x 0x%02x -> 0x%02x %s\n", dev_addr, reg_addr, data, (ret == MRAA_SUCCESS) ? "SUCCESS" : "FAIL");
+	printf("write to 0x%02x 0x%02x -> 0x%02x %s\n", dev_addr, reg_addr, data, (ret == MRAA_SUCCESS) ? "SUCCESS" : "FAIL");
 	return ret;
 }
 
@@ -180,7 +180,7 @@ uint8_t mpu_i2c_read_byte_data(mraa_i2c_context dev, const uint8_t dev_addr, con
 	if (mraa_i2c_address(dev, dev_addr) != MRAA_SUCCESS)
 			printf("can not found 0x%02x sensor\n", dev_addr);
 	uint8_t data = mraa_i2c_read_byte_data(dev, reg_addr);
-//	printf("read from 0x%02x 0x%02x <- 0x%02x\n", dev_addr, reg_addr, data);
+	printf("read from 0x%02x 0x%02x <- 0x%02x\n", dev_addr, reg_addr, data);
 	return data;
 }
 
@@ -193,18 +193,18 @@ void mpu_set_bypass(uint8_t status) {
 
 	printf("mpu_set_bypass : %d\n", status);
     uint8_t pincfg;
-//    uint8_t usrctl;
+    uint8_t usrctl;
     pincfg = mpu_i2c_read_byte_data(i2c_context, MPU9250_I2C_ADDR, MPU9250_INT_PIN_CFG);
-//    usrctl = mpu_i2c_read_byte_data(i2c_context, MPU9250_I2C_ADDR, MPU9250_USER_CTRL);
+    usrctl = mpu_i2c_read_byte_data(i2c_context, MPU9250_I2C_ADDR, MPU9250_USER_CTRL);
     if (status) {
-//        usrctl &= 0xDF;
-//        pincfg |= 0x02;
+        usrctl &= 0xDF;
+        pincfg |= 0x02;
     }
     else {
-//        usrctl |= 0x20;
+        usrctl |= 0x20;
         pincfg &= 0xFD;
     }
-//    mpu_i2c_write_byte_data(i2c_context, MPU9250_I2C_ADDR, MPU9250_USER_CTRL, usrctl);
+    mpu_i2c_write_byte_data(i2c_context, MPU9250_I2C_ADDR, MPU9250_USER_CTRL, usrctl);
     mpu_i2c_write_byte_data(i2c_context, MPU9250_I2C_ADDR, MPU9250_INT_PIN_CFG, pincfg);
 }
 

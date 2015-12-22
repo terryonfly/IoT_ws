@@ -13,7 +13,7 @@
 
 mraa_pwm_context pwm_context = NULL;;
 
-void motor_init(void) {
+void pwm_init(void) {
 	// 20 PWM0
 	// 14 PWM1
 	// 0 PWM2
@@ -31,12 +31,12 @@ void motor_init(void) {
 	mraa_pwm_enable(pwm_context, 1);
 }
 
-void motor_release(void) {
+void pwm_release(void) {
 	mraa_pwm_enable(pwm_context, 0);
 	mraa_pwm_close(pwm_context);
 }
 
-void motor_run(float persent) {
+void pwm_run(float persent) {
 //	printf("%.2f\n", persent);
 //	float motor_persent = 0.2 + persent * 0.8;
 //	mraa_pwm_write(pwm_context, motor_persent);

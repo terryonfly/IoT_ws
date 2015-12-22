@@ -63,7 +63,7 @@ void pca_run(float pwm) {
 	mraa_i2c_write_byte_data(i2c_context, *on_pdata_0 ++, 0x08);
 	mraa_i2c_write_byte_data(i2c_context, *on_pdata_0 ++, 0x09);
 
-	uint16_t on_val_1 = 800 + pwm * 950;
+	uint16_t on_val_1 = 800 + (1 - pwm) * 950;
 	uint8_t *on_pdata_1 = ((uint8_t *)&on_val_1);
 	mraa_i2c_write_byte_data(i2c_context, *on_pdata_1 ++, 0x0C);
 	mraa_i2c_write_byte_data(i2c_context, *on_pdata_1 ++, 0x0D);

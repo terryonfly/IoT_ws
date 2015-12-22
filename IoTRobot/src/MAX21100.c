@@ -185,25 +185,19 @@ void max_init(void) {
 	uint8_t revision_id = mraa_i2c_read_byte_data(i2c_context, MAX21100_REVISION_ID);
 	printf("MAX revision_id = 0x%02x\n", revision_id);
 
-	int i = 0;
-	for (i = 0; i < 10; i ++) {
 	selftestMAX21100(SelfTest); // Start by performing self test and reporting values
-//	printf("x-axis self test +: gyration : %.2f should be +55\n", SelfTest[0]);
-//	printf("y-axis self test -: gyration : %.2f should be -55\n", SelfTest[1]);
-//	printf("z-axis self test +: gyration : %.2f should be +55\n", SelfTest[2]);
-//	printf("x-axis self test -: gyration : %.2f should be -55\n", SelfTest[3]);
-//	printf("y-axis self test +: gyration : %.2f should be +55\n", SelfTest[4]);
-//	printf("z-axis self test -: gyration : %.2f should be -55\n", SelfTest[5]);
+	printf("x-axis self test +: gyration : %.2f should be +55\n", SelfTest[0]);
+	printf("y-axis self test -: gyration : %.2f should be -55\n", SelfTest[1]);
+	printf("z-axis self test +: gyration : %.2f should be +55\n", SelfTest[2]);
+	printf("x-axis self test -: gyration : %.2f should be -55\n", SelfTest[3]);
+	printf("y-axis self test +: gyration : %.2f should be +55\n", SelfTest[4]);
+	printf("z-axis self test -: gyration : %.2f should be -55\n", SelfTest[5]);
 	printf("x-axis self test +: acceleration : %.2f should be +300 mg\n", 1000*SelfTest[6]);
 	printf("y-axis self test -: acceleration : %.2f should be -300 mg\n", 1000*SelfTest[7]);
 	printf("z-axis self test +: acceleration : %.2f should be +300 mg\n", 1000*SelfTest[8]);
 	printf("x-axis self test -: acceleration : %.2f should be -300 mg\n", 1000*SelfTest[9]);
 	printf("y-axis self test +: acceleration : %.2f should be +300 mg\n", 1000*SelfTest[10]);
 	printf("z-axis self test -: acceleration : %.2f should be -300 mg\n", 1000*SelfTest[11]);
-	printf("==\n");
-	usleep(1000 * 1000);
-	}
-
 
 //	accelgyrocalMAX21100(gyroBias, accelBias); // Calibrate gyro and accelerometers, load biases in bias registers
 //	println(1000*accelBias[0]);  println(1000*accelBias[1]);  print(1000*accelBias[2]); println(" mg");
