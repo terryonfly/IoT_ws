@@ -72,20 +72,19 @@ int main() {
 	i2cbus_init();
 	mpu_init();
 	pca_init();
-//	float pwm_persent = 0.0f;
-//	int bak = 0;
+	float pwm_persent = 0.0f;
+	int bak = 0;
 	while (running) {
-//		sync_status();
 		mpu_run();
-//		if (bak) {
-//			pwm_persent += 0.01f;
-//			if (pwm_persent >= 1.0f) bak = !bak;
-//		} else {
-//			pwm_persent -= 0.01f;
-//			if (pwm_persent <= 0.0f) bak = !bak;
-//		}
-//		pca_run(pwm_persent);
-		usleep(10 * 1000);
+		if (bak) {
+			pwm_persent += 0.01f;
+			if (pwm_persent >= 1.0f) bak = !bak;
+		} else {
+			pwm_persent -= 0.01f;
+			if (pwm_persent <= 0.0f) bak = !bak;
+		}
+		pca_run(pwm_persent);
+		usleep(100 * 1000);
 	}
 	pca_release();
 	mpu_release();
