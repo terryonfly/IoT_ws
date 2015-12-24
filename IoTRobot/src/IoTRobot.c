@@ -7,7 +7,7 @@
 
 #include "TCPServer.h"
 #include "I2CBus.h"
-#include "MAX21100.h"
+#include "MPU9250.h"
 #include "PCA9685.h"
 
 int running = 1;
@@ -70,13 +70,13 @@ int main() {
 	mraa_init();
 	tcpserver_init();
 	i2cbus_init();
-	max_init();
+	mpu_init();
 	pca_init();
 //	float pwm_persent = 0.0f;
 //	int bak = 0;
 	while (running) {
-		sync_status();
-		max_run();
+//		sync_status();
+		mpu_run();
 //		if (bak) {
 //			pwm_persent += 0.01f;
 //			if (pwm_persent >= 1.0f) bak = !bak;
@@ -88,7 +88,7 @@ int main() {
 		usleep(10 * 1000);
 	}
 	pca_release();
-	max_release();
+	mpu_release();
 	i2cbus_release();
 	tcpserver_release();
 	printf("==== robot end ====\n");

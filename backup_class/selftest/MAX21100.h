@@ -116,7 +116,7 @@
 #define MAX21100_FUS_CFG1        0x1D
 #define MAX21100_YR_ODR_TRIM     0x1F
 
-#define MAX21100_ADDR		0x58
+#define MAX21100_ADDR		0x59
 #define HMC5983_ADDR 		0x1E
 #define BMP180_ADDR 		0x77
 

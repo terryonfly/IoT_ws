@@ -180,7 +180,7 @@ uint8_t mpu_i2c_read_byte_data(mraa_i2c_context dev, const uint8_t dev_addr, con
 	if (mraa_i2c_address(dev, dev_addr) != MRAA_SUCCESS)
 			printf("can not found 0x%02x sensor\n", dev_addr);
 	uint8_t data = mraa_i2c_read_byte_data(dev, reg_addr);
-	printf("read from 0x%02x 0x%02x <- 0x%02x\n", dev_addr, reg_addr, data);
+//	printf("read from 0x%02x 0x%02x <- 0x%02x\n", dev_addr, reg_addr, data);
 	return data;
 }
 
@@ -238,9 +238,9 @@ void mpu_init(void) {
 	mpu_i2c_write_byte_data(i2c_context, MPU9250_I2C_ADDR, MPU9250_PWR_MGMT_1, 0x80);
 	usleep(1 * 1000);
 	mpu_i2c_write_byte_data(i2c_context, MPU9250_I2C_ADDR, MPU9250_USER_CTRL, 0x00);
-//	mpu_set_bypass(1);
-//	mpu_i2c_write_byte_data(i2c_context, AK8963_I2C_ADDR, AK8963_CNTL1, 0x16);
-//	mpu_set_bypass(0);
+	mpu_set_bypass(1);
+	mpu_i2c_write_byte_data(i2c_context, AK8963_I2C_ADDR, AK8963_CNTL1, 0x16);
+	mpu_set_bypass(0);
     for (i = 0; i < sizeof(Mpu9250_InitData) / sizeof(Smpu9250_InitData); i++) {
     	mpu_i2c_write_byte_data(i2c_context, MPU9250_I2C_ADDR, Mpu9250_InitData[i].res_addr, Mpu9250_InitData[i].value);
     }
