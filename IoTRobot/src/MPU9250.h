@@ -63,7 +63,7 @@ typedef struct {
 #define MPU9250G_1000dps  0.030487804878f  // 0.030487804878 dps/LSB
 #define MPU9250G_2000dps  0.060975609756f  // 0.060975609756 dps/LSB
 
-#define MPU9250M_4800uT   0.6f             // 0.6 uT/LSB
+#define MPU9250M_4800uT   0.15f             // 0.15 uT/LSB
 
 #define MPU9250T_85degC   0.002995177763f  // 0.002995177763 degC/LSB (1/333.87)
 
@@ -214,6 +214,9 @@ typedef struct {
 	float 		x;
 	float 		y;
 	float 		z;
+	float 		x_integral;
+	float 		y_integral;
+	float 		z_integral;
 	int16_t 	x_raw;
 	int16_t 	y_raw;
 	int16_t 	z_raw;

@@ -84,7 +84,7 @@ int main() {
 			if (pwm_persent <= 0.0f) bak = !bak;
 		}
 		pca_run(pwm_persent);
-		usleep(100 * 1000);
+		usleep(10 * 1000);
 	}
 	pca_release();
 	mpu_release();
