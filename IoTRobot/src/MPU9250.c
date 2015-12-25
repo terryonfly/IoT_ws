@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
+#include <sys/time.h>
 
 #include "mraa.h"
 
@@ -16,6 +17,8 @@
 #include "TCPServer.h"
 
 SensorData sensor_data;
+struct timeval start, stop, diff;
+double diff_sec;
 
 //#define FIND_MAG_RANGE
 #ifdef FIND_MAG_RANGE
@@ -63,6 +66,20 @@ void mpu_set_bypass(mraa_i2c_context i2c_context, uint8_t status) {
     mpu_i2c_write_byte_data(i2c_context, MPU9250_I2C_ADDR, MPU9250_INT_PIN_CFG, pincfg);
 }
 
+int timeval_subtract(struct timeval* result, struct timeval* x, struct timeval* y) {
+	if (x->tv_sec > y->tv_sec)
+		return -1;
+	if ((x->tv_sec == y->tv_sec) && (x->tv_usec >= y->tv_usec))
+		return -1;
+	result->tv_sec = (y->tv_sec - x->tv_sec);
+	result->tv_usec = (y->tv_usec - x->tv_usec);
+	if (result->tv_usec < 0) {
+		result->tv_sec--;
+		result->tv_usec += 1000000;
+	}
+	return 0;
+}
+
 void mpu_init(void) {
 	mraa_i2c_context i2c_context = i2cbus_get_instance();
 	if (i2c_context == NULL) {
@@ -82,15 +99,15 @@ void mpu_init(void) {
 	mpu_i2c_write_byte_data(i2c_context, MPU9250_I2C_ADDR, MPU9250_INT_PIN_CFG, 0x30);// LATCH_INT_EN = 1, INT_ANYRD_2CLEAR = 1
 	mpu_i2c_write_byte_data(i2c_context, MPU9250_I2C_ADDR, MPU9250_I2C_MST_CTRL, 0x0D);// I2C Speed 400 kHz
 
-//	mpu_set_bypass(i2c_context, 1);// Into bypass mode
-//	mpu_i2c_write_byte_data(i2c_context, AK8963_I2C_ADDR, AK8963_CNTL1, 0x16);
-//	uint8_t x_asa = mpu_i2c_read_byte_data(i2c_context, AK8963_I2C_ADDR, AK8963_ASAX);
-//	uint8_t y_asa = mpu_i2c_read_byte_data(i2c_context, AK8963_I2C_ADDR, AK8963_ASAY);
-//	uint8_t z_asa = mpu_i2c_read_byte_data(i2c_context, AK8963_I2C_ADDR, AK8963_ASAZ);
-//	sensor_data.magnet.x_gain = ((x_asa - 128) * 0.5 / 128.f + 1);
-//	sensor_data.magnet.y_gain = ((y_asa - 128) * 0.5 / 128.f + 1);
-//	sensor_data.magnet.z_gain = ((z_asa - 128) * 0.5 / 128.f + 1);
-//	printf("asa xyz : %f %f %f\n", sensor_data.magnet.x_gain, sensor_data.magnet.y_gain, sensor_data.magnet.z_gain);
+	mpu_set_bypass(i2c_context, 1);// Into bypass mode
+	mpu_i2c_write_byte_data(i2c_context, AK8963_I2C_ADDR, AK8963_CNTL1, 0x16);
+	uint8_t x_asa = mpu_i2c_read_byte_data(i2c_context, AK8963_I2C_ADDR, AK8963_ASAX);
+	uint8_t y_asa = mpu_i2c_read_byte_data(i2c_context, AK8963_I2C_ADDR, AK8963_ASAY);
+	uint8_t z_asa = mpu_i2c_read_byte_data(i2c_context, AK8963_I2C_ADDR, AK8963_ASAZ);
+	sensor_data.magnet.x_gain = ((x_asa - 128) * 0.5 / 128.f + 1);
+	sensor_data.magnet.y_gain = ((y_asa - 128) * 0.5 / 128.f + 1);
+	sensor_data.magnet.z_gain = ((z_asa - 128) * 0.5 / 128.f + 1);
+	printf("asa xyz : %f %f %f\n", sensor_data.magnet.x_gain, sensor_data.magnet.y_gain, sensor_data.magnet.z_gain);
 
 	mpu_set_bypass(i2c_context, 0);// Into master mode
 	// Set Slave to Read AK8963
@@ -107,6 +124,8 @@ void mpu_init(void) {
 	sensor_data.gyro.x_integral = 0.0;
 	sensor_data.gyro.y_integral = 0.0;
 	sensor_data.gyro.z_integral = 0.0;
+
+	gettimeofday(&start, 0);
 }
 
 void mpu_release(void) {
@@ -159,9 +178,17 @@ void mpu_run(void) {
 	sensor_data.gyro.x = +(float)sensor_data.gyro.x_raw * MPU9250G_2000dps * M_PI / 180.f;
 	sensor_data.gyro.y = +(float)sensor_data.gyro.z_raw * MPU9250G_2000dps * M_PI / 180.f;
 	sensor_data.gyro.z = -(float)sensor_data.gyro.y_raw * MPU9250G_2000dps * M_PI / 180.f;
-	sensor_data.gyro.x_integral += sensor_data.gyro.x / 50;
-	sensor_data.gyro.y_integral += sensor_data.gyro.y / 50;
-	sensor_data.gyro.z_integral += sensor_data.gyro.z / 50;
+	gettimeofday(&stop, 0);
+	if (timeval_subtract(&diff, &start, &stop) == -1 || diff.tv_sec > 0) {
+		diff.tv_sec = 0;
+		diff.tv_usec = 1;
+	}
+//	printf("总计用时:%ld 微秒\n", diff.tv_usec);
+	gettimeofday(&start, 0);
+	diff_sec = diff.tv_usec / 1000000.0f;
+	sensor_data.gyro.x_integral += sensor_data.gyro.x * diff_sec;
+	sensor_data.gyro.y_integral += sensor_data.gyro.y * diff_sec;
+	sensor_data.gyro.z_integral += sensor_data.gyro.z * diff_sec;
 
 	// Magnetometer
 	uint8_t XL = mraa_i2c_read_byte_data(i2c_context, MPU9250_EXT_SENS_DATA_01);
@@ -234,7 +261,18 @@ void mpu_run(void) {
 	while (anglez < 0) anglez += 360;
 	while (anglez > 360) anglez -= 360;
 
-	unsigned char msg[12];
+	float anglex_real, angley_real, anglez_real;
+	anglex_real = atan2(sensor_data.accel.z, sensor_data.accel.y) * 180 / M_PI;
+	while (anglex_real < 0) anglex_real += 360;
+	while (anglex_real > 360) anglex_real -= 360;
+	angley_real = atan2(sensor_data.magnet.x, sensor_data.magnet.z) * 180 / M_PI - 180;
+	while (angley_real < 0) angley_real += 360;
+	while (angley_real > 360) angley_real -= 360;
+	anglez_real = atan2(sensor_data.accel.y, sensor_data.accel.x) * 180 / M_PI - 90;
+	while (anglez_real < 0) anglez_real += 360;
+	while (anglez_real > 360) anglez_real -= 360;
+
+	unsigned char msg[24];
 	int c_i = 0;
 	unsigned char *pdata;
 	int i;
@@ -254,5 +292,21 @@ void mpu_run(void) {
 	for (i = 0; i < 4; i ++) {
 		msg[c_i ++] = *pdata ++;
 	}
-	tcpserver_send(msg, 12);
+
+	float angle_x_real = -anglex_real;
+	pdata = ((unsigned char *)&angle_x_real);
+	for (i = 0; i < 4; i ++) {
+		msg[c_i ++] = *pdata ++;
+	}
+	float angle_y_real = -angley_real;
+	pdata = ((unsigned char *)&angle_y_real);
+	for (i = 0; i < 4; i ++) {
+		msg[c_i ++] = *pdata ++;
+	}
+	float angle_z_real = -anglez_real;
+	pdata = ((unsigned char *)&angle_z_real);
+	for (i = 0; i < 4; i ++) {
+		msg[c_i ++] = *pdata ++;
+	}
+	tcpserver_send(msg, 24);
 }
