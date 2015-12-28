@@ -8,6 +8,8 @@
 #ifndef MPU9250_H_
 #define MPU9250_H_
 
+#include "Math.h"
+
 /*
 |     |      ACCELEROMETER      |        GYROSCOPE        |
 | LPF | BandW | Delay  | Sample | BandW | Delay  | Sample |
@@ -206,59 +208,24 @@ typedef struct {
 #define AK8963_I2C_ADDR             0x0C
 
 typedef struct {
-	float w;
-	float x;
-	float y;
-	float z;
-} Quaternion;
-
-typedef struct {
-	float x;
-	float y;
-	float z;
-} EulerAngles;
-
-typedef struct {
-	float 		x;
-	float 		y;
-	float 		z;
-	int16_t 	x_raw;
-	int16_t 	y_raw;
-	int16_t 	z_raw;
-} AccelData;
-
-typedef struct {
-	EulerAngles euler_angles;
-	Quaternion 	quaternion;
-	int16_t 	x_raw;
-	int16_t 	y_raw;
-	int16_t 	z_raw;
-} GyroData;
-
-typedef struct {
-	float 		x;
-	float 		y;
-	float 		z;
-	float 		x_gain;
-	float 		y_gain;
-	float 		z_gain;
-	int16_t 	x_raw;
-	int16_t 	y_raw;
-	int16_t 	z_raw;
-	int16_t 	x_offset;
-	int16_t 	y_offset;
-	int16_t 	z_offset;
-} MagnetData;
-
-typedef struct {
-	AccelData 	accel;
-	GyroData 	gyro;
-	MagnetData 	magnet;
+	Vector3f 	accel;
+	Vector3f 	gyro;
+	Vector3f 	magnet;
 	float 		temp;
-	int16_t 	temp_raw;
 } SensorData;
 
-void get_diff_time(void);
+typedef struct {
+	Vector3s 	accel_raw;
+	Vector3s 	gyro_raw;
+	Vector3s 	magnet_raw;
+	Vector3s 	magnet_offset;
+	Vector3f 	magnet_gain;
+	int16_t 	temp_raw;
+} SensorDataRaw;
+
+void get_diff_time();
+
+void delay_for_ms(int ms);
 
 void mpu_init(void);
 

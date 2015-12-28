@@ -6,9 +6,11 @@
 #include "mraa.h"
 
 #include "TCPServer.h"
+#include "StatusReport.h"
 #include "I2CBus.h"
 #include "MPU9250.h"
 #include "PCA9685.h"
+#include "Poseture.h"
 
 int running = 1;
 
@@ -70,7 +72,8 @@ void sync_status() {
 	}
 	get_diff_time();
 	tcpserver_send(msg, 24);
-	usleep(10 * 1000);
+
+	delay_for_ms(10);
 }
 
 void cs(int n) {
@@ -88,10 +91,12 @@ int main() {
     signal(SIGINT, cs);  //ctrl+c
     signal(SIGTERM, cs);  //kill
 	mraa_init();
+	tcpserver_init();
+	statusreport_init();
 	i2cbus_init();
 	mpu_init();
 	pca_init();
-	tcpserver_init();
+	poseture_init();
 	float pwm_persent = 0.0f;
 	int bak = 0;
 	while (running) {
@@ -105,10 +110,12 @@ int main() {
 		}
 		pca_run(pwm_persent);
 	}
-	tcpserver_release();
+	poseture_release();
 	pca_release();
 	mpu_release();
 	i2cbus_release();
+	statusreport_release();
+	tcpserver_release();
 	printf("==== robot end ====\n");
 	return 0;
 }
