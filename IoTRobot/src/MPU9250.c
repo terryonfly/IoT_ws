@@ -16,10 +16,6 @@
 #include "I2CBus.h"
 #include "TCPServer.h"
 
-SensorData sensor_data;
-struct timeval start, stop, diff;
-double diff_sec;
-
 //#define FIND_MAG_RANGE
 #ifdef FIND_MAG_RANGE
 int16_t x_min = 0x7FF8;
@@ -28,10 +24,13 @@ int16_t y_min = 0x7FF8;
 int16_t y_max = 0x7FF8;
 int16_t z_min = 0x7FF8;
 int16_t z_max = 0x7FF8;
-int16_t x_mid = 0;
-int16_t y_mid = 0;
-int16_t z_mid = 0;
 #endif
+
+SensorData sensor_data;
+Quaternion sensor_quaternion = {0, 0, 1, 0};
+struct timeval start, stop, diff;
+double diff_sec;
+int delay_us = 1;
 
 mraa_result_t mpu_i2c_write_byte_data(mraa_i2c_context i2c_context, const uint8_t dev_addr, const uint8_t reg_addr, const uint8_t data) {
 	if (mraa_i2c_address(i2c_context, dev_addr) != MRAA_SUCCESS)
@@ -80,6 +79,108 @@ int timeval_subtract(struct timeval* result, struct timeval* x, struct timeval* 
 	return 0;
 }
 
+void get_diff_time() {
+	gettimeofday(&stop, 0);
+	if (timeval_subtract(&diff, &start, &stop) == -1 || diff.tv_sec > 0) {
+		diff.tv_sec = 0;
+		diff.tv_usec = 1;
+	}
+	gettimeofday(&start, 0);
+//	printf("%.2f\n", diff.tv_usec / 1000.f);
+	diff_sec = diff.tv_usec / 1000000.0f;
+}
+
+void delay_for_ms(int ms) {
+	delay_us += (ms * 1000 - diff.tv_usec) / 2;
+//	printf("%d ", delay_us);
+	if (delay_us > 0)
+		usleep(delay_us);
+	else
+		printf("%.3f > %d ms!\n", diff.tv_usec / 1000.f, ms);
+}
+
+void quaternion_to_euler(Quaternion qua, EulerAngles *euler) {
+	euler->x = atan2(2 * qua.w * qua.x + 2 * qua.y * qua.z,
+			1 - 2 * qua.x * qua.x - 2 * qua.y * qua.y);
+	euler->y = asin(2 * qua.w * qua.y - 2 * qua.z * qua.x);
+	euler->z = atan2(2 * qua.w * qua.z + 2 * qua.x * qua.y,
+			1 - 2 * qua.y * qua.y - 2 * qua.z * qua.z);
+}
+
+void sync_posture() {
+	unsigned char msg[16];
+	int c_i = 0;
+	unsigned char *pdata;
+	int i;
+
+	float a = 2 * acos(sensor_quaternion.w);
+	a = a * 180 / M_PI;
+	while (a < 0) a += 360;
+	while (a >= 360) a -= 360;
+	pdata = ((unsigned char *)&a);
+	for (i = 0; i < 4; i ++) {
+		msg[c_i ++] = *pdata ++;
+	}
+	float x = 0;
+	if (a != 0) x = sensor_quaternion.x / sin(acos(sensor_quaternion.w));
+	pdata = ((unsigned char *)&x);
+	for (i = 0; i < 4; i ++) {
+		msg[c_i ++] = *pdata ++;
+	}
+	float y = 0;
+	if (a != 0) y = sensor_quaternion.y / sin(acos(sensor_quaternion.w));
+	pdata = ((unsigned char *)&y);
+	for (i = 0; i < 4; i ++) {
+		msg[c_i ++] = *pdata ++;
+	}
+	float z = 0;
+	if (a != 0) z = sensor_quaternion.z / sin(acos(sensor_quaternion.w));
+	pdata = ((unsigned char *)&z);
+	for (i = 0; i < 4; i ++) {
+		msg[c_i ++] = *pdata ++;
+	}
+	tcpserver_send(msg, 16);
+}
+
+void ak_init(mraa_i2c_context i2c_context) {
+	mpu_i2c_write_byte_data(i2c_context, AK8963_I2C_ADDR, AK8963_CNTL1, 0x16);
+	uint8_t x_asa = mpu_i2c_read_byte_data(i2c_context, AK8963_I2C_ADDR, AK8963_ASAX);
+	uint8_t y_asa = mpu_i2c_read_byte_data(i2c_context, AK8963_I2C_ADDR, AK8963_ASAY);
+	uint8_t z_asa = mpu_i2c_read_byte_data(i2c_context, AK8963_I2C_ADDR, AK8963_ASAZ);
+	sensor_data.magnet.x_gain = ((x_asa - 128) * 0.5 / 128.f + 1);
+	sensor_data.magnet.y_gain = ((y_asa - 128) * 0.5 / 128.f + 1);
+	sensor_data.magnet.z_gain = ((z_asa - 128) * 0.5 / 128.f + 1);
+	printf("asa xyz : %f %f %f\n", sensor_data.magnet.x_gain, sensor_data.magnet.y_gain, sensor_data.magnet.z_gain);
+
+	sensor_data.magnet.x_offset = 100;
+	sensor_data.magnet.y_offset = 320;
+	sensor_data.magnet.z_offset = -120;
+}
+
+void ak_release(mraa_i2c_context i2c_context) {
+	mpu_i2c_write_byte_data(i2c_context, AK8963_I2C_ADDR, AK8963_CNTL1, 0x10);
+}
+
+void euler_to_quaternion(EulerAngles euler, Quaternion *qua) {
+	qua->w = cos(euler.x / 2) * cos(euler.y / 2) * cos(euler.z / 2) +
+			sin(euler.x / 2) * sin(euler.y / 2) * sin(euler.z / 2);
+	qua->x = sin(euler.x / 2) * cos(euler.y / 2) * cos(euler.z / 2) -
+			cos(euler.x / 2) * sin(euler.y / 2) * sin(euler.z / 2);
+	qua->y = cos(euler.x / 2) * sin(euler.y / 2) * cos(euler.z / 2) +
+			sin(euler.x / 2) * cos(euler.y / 2) * sin(euler.z / 2);
+	qua->z = cos(euler.x / 2) * cos(euler.y / 2) * sin(euler.z / 2) -
+			sin(euler.x / 2) * sin(euler.y / 2) * cos(euler.z / 2);
+}
+
+Quaternion quaternion_multiply(Quaternion a_qua, Quaternion b_qua) {
+	Quaternion r_qua;
+	r_qua.w = a_qua.w * b_qua.w - a_qua.x * b_qua.x - a_qua.y * b_qua.y - a_qua.z * b_qua.z;
+	r_qua.x = a_qua.w * b_qua.x + a_qua.x * b_qua.w + a_qua.y * b_qua.z - a_qua.z * b_qua.y;
+	r_qua.y = a_qua.w * b_qua.y - a_qua.x * b_qua.z + a_qua.y * b_qua.w + a_qua.z * b_qua.x;
+	r_qua.z = a_qua.w * b_qua.z + a_qua.x * b_qua.y - a_qua.y * b_qua.x + a_qua.z * b_qua.w;
+	return r_qua;
+}
+
 void mpu_init(void) {
 	mraa_i2c_context i2c_context = i2cbus_get_instance();
 	if (i2c_context == NULL) {
@@ -100,30 +201,13 @@ void mpu_init(void) {
 	mpu_i2c_write_byte_data(i2c_context, MPU9250_I2C_ADDR, MPU9250_I2C_MST_CTRL, 0x0D);// I2C Speed 400 kHz
 
 	mpu_set_bypass(i2c_context, 1);// Into bypass mode
-	mpu_i2c_write_byte_data(i2c_context, AK8963_I2C_ADDR, AK8963_CNTL1, 0x16);
-	uint8_t x_asa = mpu_i2c_read_byte_data(i2c_context, AK8963_I2C_ADDR, AK8963_ASAX);
-	uint8_t y_asa = mpu_i2c_read_byte_data(i2c_context, AK8963_I2C_ADDR, AK8963_ASAY);
-	uint8_t z_asa = mpu_i2c_read_byte_data(i2c_context, AK8963_I2C_ADDR, AK8963_ASAZ);
-	sensor_data.magnet.x_gain = ((x_asa - 128) * 0.5 / 128.f + 1);
-	sensor_data.magnet.y_gain = ((y_asa - 128) * 0.5 / 128.f + 1);
-	sensor_data.magnet.z_gain = ((z_asa - 128) * 0.5 / 128.f + 1);
-	printf("asa xyz : %f %f %f\n", sensor_data.magnet.x_gain, sensor_data.magnet.y_gain, sensor_data.magnet.z_gain);
+	ak_init(i2c_context);
 
 	mpu_set_bypass(i2c_context, 0);// Into master mode
 	// Set Slave to Read AK8963
 	mpu_i2c_write_byte_data(i2c_context, MPU9250_I2C_ADDR, MPU9250_I2C_SLV0_ADDR, 0x80 | AK8963_I2C_ADDR);// AK8963_I2C_ADDR (Read | 0x0C)
 	mpu_i2c_write_byte_data(i2c_context, MPU9250_I2C_ADDR, MPU9250_I2C_SLV0_REG, AK8963_ST1);
 	mpu_i2c_write_byte_data(i2c_context, MPU9250_I2C_ADDR, MPU9250_I2C_SLV0_CTRL, 0x89);// Enable 9 bytes read 10001001
-//	sensor_data.magnet.x_offset = 196;
-//	sensor_data.magnet.y_offset = 320;
-//	sensor_data.magnet.z_offset = -190;
-	sensor_data.magnet.x_offset = 9;
-	sensor_data.magnet.y_offset = 320;
-	sensor_data.magnet.z_offset = -73;
-
-	sensor_data.gyro.x_integral = 0.0;
-	sensor_data.gyro.y_integral = 0.0;
-	sensor_data.gyro.z_integral = 0.0;
 
 	gettimeofday(&start, 0);
 }
@@ -134,6 +218,9 @@ void mpu_release(void) {
 		perror("Err : i2c_context = NULL");
 		return;
 	}
+	mpu_set_bypass(i2c_context, 1);// Into bypass mode
+	ak_release(i2c_context);
+	mpu_set_bypass(i2c_context, 0);// Into master mode
 }
 
 void mpu_run(void) {
@@ -175,20 +262,11 @@ void mpu_run(void) {
 	sensor_data.gyro.z_raw = (int16_t)((uint16_t)
 			mraa_i2c_read_byte_data(i2c_context, MPU9250_GYRO_ZOUT_H) << 8 |
 			mraa_i2c_read_byte_data(i2c_context, MPU9250_GYRO_ZOUT_L));
-	sensor_data.gyro.x = +(float)sensor_data.gyro.x_raw * MPU9250G_2000dps * M_PI / 180.f;
-	sensor_data.gyro.y = +(float)sensor_data.gyro.z_raw * MPU9250G_2000dps * M_PI / 180.f;
-	sensor_data.gyro.z = -(float)sensor_data.gyro.y_raw * MPU9250G_2000dps * M_PI / 180.f;
-	gettimeofday(&stop, 0);
-	if (timeval_subtract(&diff, &start, &stop) == -1 || diff.tv_sec > 0) {
-		diff.tv_sec = 0;
-		diff.tv_usec = 1;
-	}
-//	printf("总计用时:%ld 微秒\n", diff.tv_usec);
-	gettimeofday(&start, 0);
-	diff_sec = diff.tv_usec / 1000000.0f;
-	sensor_data.gyro.x_integral += sensor_data.gyro.x * diff_sec;
-	sensor_data.gyro.y_integral += sensor_data.gyro.y * diff_sec;
-	sensor_data.gyro.z_integral += sensor_data.gyro.z * diff_sec;
+	get_diff_time();
+	sensor_data.gyro.euler_angles.x = +(float)sensor_data.gyro.x_raw * MPU9250G_2000dps * M_PI / 180.f * diff_sec;
+	sensor_data.gyro.euler_angles.y = +(float)sensor_data.gyro.z_raw * MPU9250G_2000dps * M_PI / 180.f * diff_sec;
+	sensor_data.gyro.euler_angles.z = -(float)sensor_data.gyro.y_raw * MPU9250G_2000dps * M_PI / 180.f * diff_sec;
+	euler_to_quaternion(sensor_data.gyro.euler_angles, &sensor_data.gyro.quaternion);
 
 	// Magnetometer
 	uint8_t XL = mraa_i2c_read_byte_data(i2c_context, MPU9250_EXT_SENS_DATA_01);
@@ -220,10 +298,10 @@ void mpu_run(void) {
 	if (z_min > sensor_data.magnet.z_raw) z_min = sensor_data.magnet.z_raw;
 	if (z_max < sensor_data.magnet.z_raw) z_max = sensor_data.magnet.z_raw;
 	printf("%d %d %d %d %d %d ---- ", x_min, x_max, y_min, y_max, z_min, z_max);
-	x_mid = (x_min + x_max) / 2;
-	y_mid = (y_min + y_max) / 2;
-	z_mid = (z_min + z_max) / 2;
-	printf("%d %d %d ---- ", x_mid, y_mid, z_mid);
+	sensor_data.magnet.x_offset = (x_min + x_max) / 2;
+	sensor_data.magnet.y_offset = (y_min + y_max) / 2;
+	sensor_data.magnet.z_offset = (z_min + z_max) / 2;
+	printf("%d %d %d ---- ", sensor_data.magnet.x_offset, sensor_data.magnet.y_offset, sensor_data.magnet.z_offset);
 #endif
 	sensor_data.magnet.x = +(float)(sensor_data.magnet.y_raw - sensor_data.magnet.y_offset) * sensor_data.magnet.y_gain * MPU9250M_4800uT;
 	sensor_data.magnet.y = -(float)(sensor_data.magnet.z_raw - sensor_data.magnet.z_offset) * sensor_data.magnet.z_gain * MPU9250M_4800uT;
@@ -231,82 +309,22 @@ void mpu_run(void) {
 
 //	printf("tempr : %f degC\n",
 //			sensor_data.temp);
-//	printf("accel : %8.2f %8.2f %8.2f\n",
+//	printf("accel : %8.2f %8.2f %8.2f g\n",
 //			sensor_data.accel.x,
 //			sensor_data.accel.y,
 //			sensor_data.accel.z);
-//	printf("gyros : %8.2f %8.2f %8.2f\n",
+//	printf("gyros : %8.2f %8.2f %8.2f rad/s\n",
 //			sensor_data.gyro.x,
 //			sensor_data.gyro.y,
 //			sensor_data.gyro.z);
-//	printf("magen : %8.2f %8.2f %8.2f\n",
+//	printf("magen : %8.2f %8.2f %8.2f uT\n",
 //			sensor_data.magnet.x,
 //			sensor_data.magnet.y,
 //			sensor_data.magnet.z);
 
-//	float accfx, accfy, accfz;
-//	accfx = sensor_data.magnet.x;
-//	accfy = sensor_data.magnet.y;
-//	accfz = sensor_data.magnet.z;
+	sensor_quaternion = quaternion_multiply(sensor_quaternion, sensor_data.gyro.quaternion);
 
-	float anglex, angley, anglez;
-	anglex = atan2(sensor_data.accel.z, sensor_data.accel.y) * 180 / M_PI;
-	while (anglex < 0) anglex += 360;
-	while (anglex > 360) anglex -= 360;
-//	angley = atan2(sensor_data.magnet.x, sensor_data.magnet.z) * 180 / M_PI - 180;
-	angley = -sensor_data.gyro.y_integral * 180 / M_PI;
-	while (angley < 0) angley += 360;
-	while (angley > 360) angley -= 360;
-	anglez = atan2(sensor_data.accel.y, sensor_data.accel.x) * 180 / M_PI - 90;
-	while (anglez < 0) anglez += 360;
-	while (anglez > 360) anglez -= 360;
+	sync_posture();
 
-	float anglex_real, angley_real, anglez_real;
-	anglex_real = atan2(sensor_data.accel.z, sensor_data.accel.y) * 180 / M_PI;
-	while (anglex_real < 0) anglex_real += 360;
-	while (anglex_real > 360) anglex_real -= 360;
-	angley_real = atan2(sensor_data.magnet.x, sensor_data.magnet.z) * 180 / M_PI - 180;
-	while (angley_real < 0) angley_real += 360;
-	while (angley_real > 360) angley_real -= 360;
-	anglez_real = atan2(sensor_data.accel.y, sensor_data.accel.x) * 180 / M_PI - 90;
-	while (anglez_real < 0) anglez_real += 360;
-	while (anglez_real > 360) anglez_real -= 360;
-
-	unsigned char msg[24];
-	int c_i = 0;
-	unsigned char *pdata;
-	int i;
-
-	float angle_x = -anglex;
-	pdata = ((unsigned char *)&angle_x);
-	for (i = 0; i < 4; i ++) {
-		msg[c_i ++] = *pdata ++;
-	}
-	float angle_y = -angley;
-	pdata = ((unsigned char *)&angle_y);
-	for (i = 0; i < 4; i ++) {
-		msg[c_i ++] = *pdata ++;
-	}
-	float angle_z = -anglez;
-	pdata = ((unsigned char *)&angle_z);
-	for (i = 0; i < 4; i ++) {
-		msg[c_i ++] = *pdata ++;
-	}
-
-	float angle_x_real = -anglex_real;
-	pdata = ((unsigned char *)&angle_x_real);
-	for (i = 0; i < 4; i ++) {
-		msg[c_i ++] = *pdata ++;
-	}
-	float angle_y_real = -angley_real;
-	pdata = ((unsigned char *)&angle_y_real);
-	for (i = 0; i < 4; i ++) {
-		msg[c_i ++] = *pdata ++;
-	}
-	float angle_z_real = -anglez_real;
-	pdata = ((unsigned char *)&angle_z_real);
-	for (i = 0; i < 4; i ++) {
-		msg[c_i ++] = *pdata ++;
-	}
-	tcpserver_send(msg, 24);
+	delay_for_ms(10);
 }

@@ -171,6 +171,10 @@ typedef struct {
 #define MPU9250_ZA_OFFSET_H         0x7D
 #define MPU9250_ZA_OFFSET_L         0x7E
 
+#define MPU9250_BANK_SEL			0x6D
+#define MPU9250_MEM_START_ADDR		0x6E
+#define MPU9250_MEM_R_W				0x6F
+
 /* ---- AK8963 Reg In MPU9250 ----------------------------------------------- */
 
 #define AK8963_Device_ID            0x48
@@ -202,6 +206,19 @@ typedef struct {
 #define AK8963_I2C_ADDR             0x0C
 
 typedef struct {
+	float w;
+	float x;
+	float y;
+	float z;
+} Quaternion;
+
+typedef struct {
+	float x;
+	float y;
+	float z;
+} EulerAngles;
+
+typedef struct {
 	float 		x;
 	float 		y;
 	float 		z;
@@ -211,12 +228,8 @@ typedef struct {
 } AccelData;
 
 typedef struct {
-	float 		x;
-	float 		y;
-	float 		z;
-	float 		x_integral;
-	float 		y_integral;
-	float 		z_integral;
+	EulerAngles euler_angles;
+	Quaternion 	quaternion;
 	int16_t 	x_raw;
 	int16_t 	y_raw;
 	int16_t 	z_raw;
@@ -244,6 +257,8 @@ typedef struct {
 	float 		temp;
 	int16_t 	temp_raw;
 } SensorData;
+
+void get_diff_time(void);
 
 void mpu_init(void);
 

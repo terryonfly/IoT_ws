@@ -20,7 +20,7 @@ float y_a = 0.0;
 float y_l = 10.0;
 
 void sync_status() {
-	unsigned char msg[12];
+	unsigned char msg[24];
 	int c_i = 0;
 	unsigned char *pdata;
 	int i;
@@ -50,7 +50,27 @@ void sync_status() {
 	for (i = 0; i < 4; i ++) {
 		msg[c_i ++] = *pdata ++;
 	}
-	tcpserver_send(msg, 12);
+
+	float xangle_z = a_z;
+	pdata = ((unsigned char *)&xangle_z);
+	for (i = 0; i < 4; i ++) {
+		msg[c_i ++] = *pdata ++;
+	}
+
+	float yangle_z = a_z;
+	pdata = ((unsigned char *)&yangle_z);
+	for (i = 0; i < 4; i ++) {
+		msg[c_i ++] = *pdata ++;
+	}
+
+	float zangle_z = a_z;
+	pdata = ((unsigned char *)&zangle_z);
+	for (i = 0; i < 4; i ++) {
+		msg[c_i ++] = *pdata ++;
+	}
+	get_diff_time();
+	tcpserver_send(msg, 24);
+	usleep(10 * 1000);
 }
 
 void cs(int n) {
@@ -68,10 +88,10 @@ int main() {
     signal(SIGINT, cs);  //ctrl+c
     signal(SIGTERM, cs);  //kill
 	mraa_init();
-	tcpserver_init();
 	i2cbus_init();
 	mpu_init();
 	pca_init();
+	tcpserver_init();
 	float pwm_persent = 0.0f;
 	int bak = 0;
 	while (running) {
@@ -84,12 +104,11 @@ int main() {
 			if (pwm_persent <= 0.0f) bak = !bak;
 		}
 		pca_run(pwm_persent);
-		usleep(10 * 1000);
 	}
+	tcpserver_release();
 	pca_release();
 	mpu_release();
 	i2cbus_release();
-	tcpserver_release();
 	printf("==== robot end ====\n");
 	return 0;
 }
