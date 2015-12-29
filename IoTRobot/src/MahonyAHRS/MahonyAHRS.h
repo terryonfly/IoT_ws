@@ -20,13 +20,20 @@
 
 extern volatile float twoKp;			// 2 * proportional gain (Kp)
 extern volatile float twoKi;			// 2 * integral gain (Ki)
-extern volatile float q0, q1, q2, q3;	// quaternion of sensor frame relative to auxiliary frame
 
 //---------------------------------------------------------------------------------------------------
 // Function declarations
 
-void MahonyAHRSupdate(float gx, float gy, float gz, float ax, float ay, float az, float mx, float my, float mz, double diff_sec, Quaternion *qua);
-void MahonyAHRSupdateIMU(float gx, float gy, float gz, float ax, float ay, float az, double diff_sec, Quaternion *qua);
+void MahonyAHRSupdate(
+		Vector3f gyro,
+		Vector3f accel,
+		Vector3f magnet,
+		double diff_time, Quaternion *qua);
+
+void MahonyAHRSupdateIMU(
+		Vector3f gyro,
+		Vector3f accel,
+		double diff_time, Quaternion *qua);
 
 #endif
 //=====================================================================================================

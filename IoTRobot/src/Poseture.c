@@ -18,10 +18,7 @@
 
 #include "MahonyAHRS/MahonyAHRS.h"
 
-Quaternion accel_magnet_quaternion;
-
-Quaternion gyro_quaternion;
-Quaternion gyro_quaternion_integral = {1, 0, 0, 0};
+Quaternion posture_quaternion = {1.f, 0.f, 0.f, 0.f};
 
 pthread_t thread_id;
 int thread_running;
@@ -52,22 +49,19 @@ void poseture_run(void) {
     	while (!sensor_data_updated);
     	pthread_mutex_lock(&update_mutex);
     	if (sensor_data_updated) {
-//    		euler_to_quaternion(sensor_data.gyro, &gyro_quaternion);
-//    		gyro_quaternion_integral = quaternion_multiply(gyro_quaternion_integral, gyro_quaternion);
-//    		sync_posture(gyro_quaternion_integral);
-
-//    		Vector3f magnet_angles;
-//    		magnet_angles.x = atan2(sensor_data.accel.z, sensor_data.accel.y);
-//    		magnet_angles.y = atan2(sensor_data.magnet.x, sensor_data.magnet.z);
-//    		magnet_angles.z = atan2(sensor_data.accel.y, sensor_data.accel.x);
-//    		euler_to_quaternion(magnet_angles, &accel_magnet_quaternion);
-//    		sync_posture(accel_magnet_quaternion);
-
-    		MahonyAHRSupdateIMU(
-    				sensor_data.gyro.x, sensor_data.gyro.y, sensor_data.gyro.z,
-    				sensor_data.accel.x, sensor_data.accel.y, sensor_data.accel.z,
-					sensor_data.diff_sec, &accel_magnet_quaternion);
-    		sync_posture(accel_magnet_quaternion);
+    		if (1) {// Magnet offset is ready
+				MahonyAHRSupdateIMU(
+						sensor_data.gyro,
+						sensor_data.accel,
+						sensor_data.diff_sec, &posture_quaternion);
+    		} else {// Magnet offset is not ready
+				MahonyAHRSupdate(
+						sensor_data.gyro,
+						sensor_data.accel,
+						sensor_data.magnet,
+						sensor_data.diff_sec, &posture_quaternion);
+    		}
+    		sync_posture(posture_quaternion);
 
     		sensor_data_updated = 0;
     	}

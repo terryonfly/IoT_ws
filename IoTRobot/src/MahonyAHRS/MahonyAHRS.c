@@ -2,7 +2,7 @@
 // MahonyAHRS.c
 //=====================================================================================================
 //
-// Madgwick's implementation of Mayhony's AHRS algorithm.
+// Madgwick's implementation of Maccel.yhony's AHRS algorithm.
 // See: http://www.x-io.co.uk/node/8#open_source_ahrs_and_imu_algorithms
 //
 // Date			Author			Notes
@@ -34,7 +34,7 @@
 
 volatile float twoKp = twoKpDef;											// 2 * proportional gain (Kp)
 volatile float twoKi = twoKiDef;											// 2 * integral gain (Ki)
-volatile float integralFBx = 0.0f,  integralFBy = 0.0f, integralFBz = 0.0f;	// integral error terms scaled by Ki
+volatile float integralFBz = 0.0f,  integralFBx = 0.0f, integralFBy = 0.0f;	// integral error terms scaled by Ki
 
 //---------------------------------------------------------------------------------------------------
 // Function declarations
@@ -48,150 +48,148 @@ float invSqrt(float x);
 // AHRS algorithm update
 
 void MahonyAHRSupdate(
-		float gx, float gy, float gz,
-		float ax, float ay, float az,
-		float mx, float my, float mz,
-		double diff_sec, Quaternion *qua) {
+		Vector3f gyro,
+		Vector3f accel,
+		Vector3f magnet,
+		double diff_time, Quaternion *qua) {
 	float recipNorm;
-    float q0q0, q0q1, q0q2, q0q3, q1q1, q1q2, q1q3, q2q2, q2q3, q3q3;  
-	float hx, hy, bx, bz;
+    float qwqw, qwqz, qwqx, qwqy, qzqz, qzqx, qzqy, qxqx, qxqy, qyqy;
+	float hx, hz, by, bz;
 	float halfvx, halfvy, halfvz, halfwx, halfwy, halfwz;
 	float halfex, halfey, halfez;
 	float qa, qb, qc;
 
 	// Use IMU algorithm if magnetometer measurement invalid (avoids NaN in magnetometer normalisation)
-	if((mx == 0.0f) && (my == 0.0f) && (mz == 0.0f)) {
-		MahonyAHRSupdateIMU(gx, gy, gz, ax, ay, az, diff_sec, qua);
+	if((magnet.x == 0.0f) && (magnet.y == 0.0f) && (magnet.z == 0.0f)) {
+		MahonyAHRSupdateIMU(gyro, accel, diff_time, qua);
 		return;
 	}
 
 	// Compute feedback only if accelerometer measurement valid (avoids NaN in accelerometer normalisation)
-	if(!((ax == 0.0f) && (ay == 0.0f) && (az == 0.0f))) {
+	if(!((accel.x == 0.0f) && (accel.y == 0.0f) && (accel.z == 0.0f))) {
 
 		// Normalise accelerometer measurement
-		recipNorm = invSqrt(ax * ax + ay * ay + az * az);
-		ax *= recipNorm;
-		ay *= recipNorm;
-		az *= recipNorm;     
+		recipNorm = invSqrt(accel.x * accel.x + accel.y * accel.y + accel.z * accel.z);
+		accel.x *= recipNorm;
+		accel.y *= recipNorm;
+		accel.z *= recipNorm;
 
 		// Normalise magnetometer measurement
-		recipNorm = invSqrt(mx * mx + my * my + mz * mz);
-		mx *= recipNorm;
-		my *= recipNorm;
-		mz *= recipNorm;   
+		recipNorm = invSqrt(magnet.x * magnet.x + magnet.y * magnet.y + magnet.z * magnet.z);
+		magnet.x *= recipNorm;
+		magnet.y *= recipNorm;
+		magnet.z *= recipNorm;
 
         // Auxiliary variables to avoid repeated arithmetic
-        q0q0 = q0 * q0;
-        q0q1 = q0 * q1;
-        q0q2 = q0 * q2;
-        q0q3 = q0 * q3;
-        q1q1 = q1 * q1;
-        q1q2 = q1 * q2;
-        q1q3 = q1 * q3;
-        q2q2 = q2 * q2;
-        q2q3 = q2 * q3;
-        q3q3 = q3 * q3;
+        qwqw = qua->w * qua->w;
+        qwqz = qua->w * qua->z;
+        qwqx = qua->w * qua->x;
+        qwqy = qua->w * qua->y;
+        qzqz = qua->z * qua->z;
+        qzqx = qua->z * qua->x;
+        qzqy = qua->z * qua->y;
+        qxqx = qua->x * qua->x;
+        qxqy = qua->x * qua->y;
+        qyqy = qua->y * qua->y;
 
         // Reference direction of Earth's magnetic field
-        hx = 2.0f * (mx * (0.5f - q2q2 - q3q3) + my * (q1q2 - q0q3) + mz * (q1q3 + q0q2));
-        hy = 2.0f * (mx * (q1q2 + q0q3) + my * (0.5f - q1q1 - q3q3) + mz * (q2q3 - q0q1));
-        bx = sqrt(hx * hx + hy * hy);
-        bz = 2.0f * (mx * (q1q3 - q0q2) + my * (q2q3 + q0q1) + mz * (0.5f - q1q1 - q2q2));
+        hx = 2.0f * (magnet.z * (qzqx + qwqy) + magnet.x * (0.5f - qzqz - qyqy) + magnet.y * (qxqy - qwqz));
+        hz = 2.0f * (magnet.z * (0.5f - qxqx - qyqy) + magnet.x * (qzqx - qwqy) + magnet.y * (qzqy + qwqx));
+        by = 2.0f * (magnet.z * (qzqy - qwqx) + magnet.x * (qxqy + qwqz) + magnet.y * (0.5f - qzqz - qxqx));
+        bz = sqrt(hz * hz + hx * hx);
 
 		// Estimated direction of gravity and magnetic field
-		halfvx = q1q3 - q0q2;
-		halfvy = q0q1 + q2q3;
-		halfvz = q0q0 - 0.5f + q3q3;
-        halfwx = bx * (0.5f - q2q2 - q3q3) + bz * (q1q3 - q0q2);
-        halfwy = bx * (q1q2 - q0q3) + bz * (q0q1 + q2q3);
-        halfwz = bx * (q0q2 + q1q3) + bz * (0.5f - q1q1 - q2q2);  
+		halfvx = qwqz + qxqy;
+		halfvy = qwqw - 0.5f + qyqy;
+		halfvz = qzqy - qwqx;
+        halfwx = bz * (qzqx - qwqy) + by * (qwqz + qxqy);
+        halfwy = bz * (qwqx + qzqy) + by * (0.5f - qzqz - qxqx);
+        halfwz = bz * (0.5f - qxqx - qyqy) + by * (qzqy - qwqx);
 	
 		// Error is sum of cross product between estimated direction and measured direction of field vectors
-		halfex = (ay * halfvz - az * halfvy) + (my * halfwz - mz * halfwy);
-		halfey = (az * halfvx - ax * halfvz) + (mz * halfwx - mx * halfwz);
-		halfez = (ax * halfvy - ay * halfvx) + (mx * halfwy - my * halfwx);
+		halfex = (accel.y * halfvz - accel.z * halfvy) + (magnet.y * halfwz - magnet.z * halfwy);
+		halfey = (accel.z * halfvx - accel.x * halfvz) + (magnet.z * halfwx - magnet.x * halfwz);
+		halfez = (accel.x * halfvy - accel.y * halfvx) + (magnet.x * halfwy - magnet.y * halfwx);
 
 		// Compute and apply integral feedback if enabled
 		if(twoKi > 0.0f) {
-			integralFBx += twoKi * halfex * diff_sec;	// integral error scaled by Ki
-			integralFBy += twoKi * halfey * diff_sec;
-			integralFBz += twoKi * halfez * diff_sec;
-			gx += integralFBx;	// apply integral feedback
-			gy += integralFBy;
-			gz += integralFBz;
-		}
-		else {
+			integralFBx += twoKi * halfex * diff_time;	// integral error scaled by Ki
+			integralFBy += twoKi * halfey * diff_time;
+			integralFBz += twoKi * halfez * diff_time;
+			gyro.x += integralFBx;	// apply integral feedback
+			gyro.y += integralFBy;
+			gyro.z += integralFBz;
+		} else {
 			integralFBx = 0.0f;	// prevent integral windup
 			integralFBy = 0.0f;
 			integralFBz = 0.0f;
 		}
 
 		// Apply proportional feedback
-		gx += twoKp * halfex;
-		gy += twoKp * halfey;
-		gz += twoKp * halfez;
+		gyro.x += twoKp * halfex;
+		gyro.y += twoKp * halfey;
+		gyro.z += twoKp * halfez;
 	}
 	
 	// Integrate rate of change of quaternion
-	gx *= (0.5f * diff_sec);		// pre-multiply common factors
-	gy *= (0.5f * diff_sec);
-	gz *= (0.5f * diff_sec);
-	qa = q0;
-	qb = q1;
-	qc = q2;
-	q0 += (-qb * gx - qc * gy - q3 * gz);
-	q1 += (qa * gx + qc * gz - q3 * gy);
-	q2 += (qa * gy - qb * gz + q3 * gx);
-	q3 += (qa * gz + qb * gy - qc * gx);
+	gyro.x *= (0.5f * diff_time);		// pre-multiply common factors
+	gyro.y *= (0.5f * diff_time);
+	gyro.z *= (0.5f * diff_time);
+	qa = qua->w;
+	qc = qua->x;
+	qb = qua->z;
+	qua->w += (-qc * gyro.x - qua->y * gyro.y - qb * gyro.z);
+	qua->x += (qa * gyro.x + qua->y * gyro.z - qb * gyro.y);
+	qua->y += (qa * gyro.y - qc * gyro.z + qb * gyro.x);
+	qua->z += (qa * gyro.z + qc * gyro.y - qua->y * gyro.x);
 	
 	// Normalise quaternion
-	recipNorm = invSqrt(q0 * q0 + q1 * q1 + q2 * q2 + q3 * q3);
-	q0 *= recipNorm;
-	q1 *= recipNorm;
-	q2 *= recipNorm;
-	q3 *= recipNorm;
-	qua->w = q0;
-	qua->x = q1;
-	qua->y = q2;
-	qua->z = q3;
+	recipNorm = invSqrt(qua->w * qua->w + qua->x * qua->x + qua->y * qua->y + qua->z * qua->z);
+	qua->w *= recipNorm;
+	qua->x *= recipNorm;
+	qua->y *= recipNorm;
+	qua->z *= recipNorm;
 }
 
 //---------------------------------------------------------------------------------------------------
 // IMU algorithm update
 
-void MahonyAHRSupdateIMU(float gx, float gy, float gz, float ax, float ay, float az, double diff_sec, Quaternion *qua) {
+void MahonyAHRSupdateIMU(
+		Vector3f gyro,
+		Vector3f accel,
+		double diff_time, Quaternion *qua) {
 	float recipNorm;
 	float halfvx, halfvy, halfvz;
 	float halfex, halfey, halfez;
 	float qa, qb, qc;
 
 	// Compute feedback only if accelerometer measurement valid (avoids NaN in accelerometer normalisation)
-	if(!((ax == 0.0f) && (ay == 0.0f) && (az == 0.0f))) {
+	if(!((accel.x == 0.0f) && (accel.y == 0.0f) && (accel.z == 0.0f))) {
 
 		// Normalise accelerometer measurement
-		recipNorm = invSqrt(ax * ax + ay * ay + az * az);
-		ax *= recipNorm;
-		ay *= recipNorm;
-		az *= recipNorm;        
+		recipNorm = invSqrt(accel.x * accel.x + accel.y * accel.y + accel.z * accel.z);
+		accel.x *= recipNorm;
+		accel.y *= recipNorm;
+		accel.z *= recipNorm;
 
 		// Estimated direction of gravity and vector perpendicular to magnetic flux
-		halfvx = q1 * q3 - q0 * q2;
-		halfvy = q0 * q1 + q2 * q3;
-		halfvz = q0 * q0 - 0.5f + q3 * q3;
+		halfvx = qua->w * qua->z + qua->x * qua->y;
+		halfvy = qua->w * qua->w - 0.5f + qua->y * qua->y;
+		halfvz = qua->z * qua->y - qua->w * qua->x;
 	
 		// Error is sum of cross product between estimated and measured direction of gravity
-		halfex = (ay * halfvz - az * halfvy);
-		halfey = (az * halfvx - ax * halfvz);
-		halfez = (ax * halfvy - ay * halfvx);
+		halfex = (accel.y * halfvz - accel.z * halfvy);
+		halfey = (accel.z * halfvx - accel.x * halfvz);
+		halfez = (accel.x * halfvy - accel.y * halfvx);
 
 		// Compute and apply integral feedback if enabled
 		if(twoKi > 0.0f) {
-			integralFBx += twoKi * halfex * diff_sec;	// integral error scaled by Ki
-			integralFBy += twoKi * halfey * diff_sec;
-			integralFBz += twoKi * halfez * diff_sec;
-			gx += integralFBx;	// apply integral feedback
-			gy += integralFBy;
-			gz += integralFBz;
+			integralFBx += twoKi * halfex * diff_time;	// integral error scaled by Ki
+			integralFBy += twoKi * halfey * diff_time;
+			integralFBz += twoKi * halfez * diff_time;
+			gyro.x += integralFBx;	// apply integral feedback
+			gyro.y += integralFBy;
+			gyro.z += integralFBz;
 		}
 		else {
 			integralFBx = 0.0f;	// prevent integral windup
@@ -200,29 +198,29 @@ void MahonyAHRSupdateIMU(float gx, float gy, float gz, float ax, float ay, float
 		}
 
 		// Apply proportional feedback
-		gx += twoKp * halfex;
-		gy += twoKp * halfey;
-		gz += twoKp * halfez;
+		gyro.x += twoKp * halfex;
+		gyro.y += twoKp * halfey;
+		gyro.z += twoKp * halfez;
 	}
 	
 	// Integrate rate of change of quaternion
-	gx *= (0.5f * diff_sec);		// pre-multiply common factors
-	gy *= (0.5f * diff_sec);
-	gz *= (0.5f * diff_sec);
-	qa = q0;
-	qb = q1;
-	qc = q2;
-	q0 += (-qb * gx - qc * gy - q3 * gz);
-	q1 += (qa * gx + qc * gz - q3 * gy);
-	q2 += (qa * gy - qb * gz + q3 * gx);
-	q3 += (qa * gz + qb * gy - qc * gx); 
+	gyro.x *= (0.5f * diff_time);		// pre-multiply common factors
+	gyro.y *= (0.5f * diff_time);
+	gyro.z *= (0.5f * diff_time);
+	qa = qua->w;
+	qc = qua->x;
+	qb = qua->z;
+	qua->w += (-qb * gyro.z - qc * gyro.x - qua->y * gyro.y);
+	qua->x += (qa * gyro.x + qua->y * gyro.z - qb * gyro.y);
+	qua->y += (qa * gyro.y - qc * gyro.z + qb * gyro.x);
+	qua->z += (qa * gyro.z + qc * gyro.y - qua->y * gyro.x);
 	
 	// Normalise quaternion
-	recipNorm = invSqrt(q0 * q0 + q1 * q1 + q2 * q2 + q3 * q3);
-	q0 *= recipNorm;
-	q1 *= recipNorm;
-	q2 *= recipNorm;
-	q3 *= recipNorm;
+	recipNorm = invSqrt(qua->w * qua->w + qua->x * qua->x + qua->y * qua->y + qua->z * qua->z);
+	qua->w *= recipNorm;
+	qua->x *= recipNorm;
+	qua->y *= recipNorm;
+	qua->z *= recipNorm;
 }
 
 //---------------------------------------------------------------------------------------------------
