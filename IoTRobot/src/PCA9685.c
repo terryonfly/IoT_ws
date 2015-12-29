@@ -14,7 +14,10 @@
 #include "PCA9685.h"
 #include "I2CBus.h"
 
-#define PCA9685_ADDR	0x40
+/***************** Careful!!!!! ******************/
+#define PAC_DEV_CONNECTED 	0
+
+#define PCA9685_ADDR		0x40
 
 void pca_init(void) {
 	mraa_i2c_context i2c_context = i2cbus_get_instance();
@@ -57,6 +60,8 @@ void pca_run(float pwm) {
 		perror("Err : i2c_context = NULL");
 	if (mraa_i2c_address(i2c_context, PCA9685_ADDR) != MRAA_SUCCESS)
 		printf("can not found 0x%02x sensor\n", PCA9685_ADDR);
+
+	if (!PAC_DEV_CONNECTED) return;// ---->Good for sensor
 
 	uint16_t on_val_0 = 800 + pwm * 950;
 	uint8_t *on_pdata_0 = ((uint8_t *)&on_val_0);

@@ -19,6 +19,7 @@
 pthread_t thread_id;
 int thread_running;
 
+SensorData sensor_data;
 Quaternion sensor_quaternion;
 int need_send = 0;
 pthread_mutex_t tcpsend_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -53,44 +54,84 @@ void statusreport_run(void) {
     		need_send = 0;
         	pthread_mutex_unlock(&tcpsend_mutex);
 
-        	unsigned char msg[16];
+        	unsigned char msg[40];
         	int c_i = 0;
         	unsigned char *pdata;
         	int i;
 
-        	float a = 2 * acos(sync_quaternion.w);
-        	a = a * 180 / M_PI;
-        	while (a < 0) a += 360;
-        	while (a >= 360) a -= 360;
-        	pdata = ((unsigned char *)&a);
-        	for (i = 0; i < 4; i ++) {
-        		msg[c_i ++] = *pdata ++;
+        	{/* Posture */
+            	float a = 2 * acos(sync_quaternion.w);
+            	a = a * 180 / M_PI;
+            	while (a < 0) a += 360;
+            	while (a >= 360) a -= 360;
+            	pdata = ((unsigned char *)&a);
+            	for (i = 0; i < 4; i ++) {
+            		msg[c_i ++] = *pdata ++;
+            	}
+            	float x = 0;
+            	if (a != 0) x = sync_quaternion.x / sin(acos(sync_quaternion.w));
+            	pdata = ((unsigned char *)&x);
+            	for (i = 0; i < 4; i ++) {
+            		msg[c_i ++] = *pdata ++;
+            	}
+            	float y = 0;
+            	if (a != 0) y = sync_quaternion.y / sin(acos(sync_quaternion.w));
+            	pdata = ((unsigned char *)&y);
+            	for (i = 0; i < 4; i ++) {
+            		msg[c_i ++] = *pdata ++;
+            	}
+            	float z = 0;
+            	if (a != 0) z = sync_quaternion.z / sin(acos(sync_quaternion.w));
+            	pdata = ((unsigned char *)&z);
+            	for (i = 0; i < 4; i ++) {
+            		msg[c_i ++] = *pdata ++;
+            	}
         	}
-        	float x = 0;
-        	if (a != 0) x = sync_quaternion.x / sin(acos(sync_quaternion.w));
-        	pdata = ((unsigned char *)&x);
-        	for (i = 0; i < 4; i ++) {
-        		msg[c_i ++] = *pdata ++;
+
+        	{/* Accel */
+				float x = sensor_data.accel.x;
+				pdata = ((unsigned char *)&x);
+				for (i = 0; i < 4; i ++) {
+					msg[c_i ++] = *pdata ++;
+				}
+				float y = sensor_data.accel.y;
+				pdata = ((unsigned char *)&y);
+				for (i = 0; i < 4; i ++) {
+					msg[c_i ++] = *pdata ++;
+				}
+				float z = sensor_data.accel.z;
+				pdata = ((unsigned char *)&z);
+				for (i = 0; i < 4; i ++) {
+					msg[c_i ++] = *pdata ++;
+				}
         	}
-        	float y = 0;
-        	if (a != 0) y = sync_quaternion.y / sin(acos(sync_quaternion.w));
-        	pdata = ((unsigned char *)&y);
-        	for (i = 0; i < 4; i ++) {
-        		msg[c_i ++] = *pdata ++;
+
+        	{/* Magnet */
+				float x = sensor_data.magnet.x;
+				pdata = ((unsigned char *)&x);
+				for (i = 0; i < 4; i ++) {
+					msg[c_i ++] = *pdata ++;
+				}
+				float y = sensor_data.magnet.y;
+				pdata = ((unsigned char *)&y);
+				for (i = 0; i < 4; i ++) {
+					msg[c_i ++] = *pdata ++;
+				}
+				float z = sensor_data.magnet.z;
+				pdata = ((unsigned char *)&z);
+				for (i = 0; i < 4; i ++) {
+					msg[c_i ++] = *pdata ++;
+				}
         	}
-        	float z = 0;
-        	if (a != 0) z = sync_quaternion.z / sin(acos(sync_quaternion.w));
-        	pdata = ((unsigned char *)&z);
-        	for (i = 0; i < 4; i ++) {
-        		msg[c_i ++] = *pdata ++;
-        	}
-        	tcpserver_send(msg, 16);
+
+        	tcpserver_send(msg, 40);
     	}
     }
 }
 
-void sync_posture(Quaternion qua) {
+void sync_posture(SensorData sd, Quaternion qua) {
 	pthread_mutex_lock(&tcpsend_mutex);
+	sensor_data = sd;
 	sensor_quaternion = qua;
 	need_send = 1;
 	pthread_mutex_unlock(&tcpsend_mutex);

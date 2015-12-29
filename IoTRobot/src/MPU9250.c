@@ -14,7 +14,7 @@
 
 #include "MPU9250.h"
 #include "I2CBus.h"
-#include "Poseture.h"
+#include "Posture.h"
 
 //#define FIND_MAG_RANGE
 #ifdef FIND_MAG_RANGE
@@ -30,7 +30,7 @@ SensorData sensor_data;
 SensorDataRaw sensor_data_raw;
 
 struct timeval start, stop, diff;
-int delay_us = 1;
+float delay_us = 1;
 
 mraa_result_t mpu_i2c_write_byte_data(mraa_i2c_context i2c_context, const uint8_t dev_addr, const uint8_t reg_addr, const uint8_t data) {
 	if (mraa_i2c_address(i2c_context, dev_addr) != MRAA_SUCCESS)
@@ -91,10 +91,10 @@ double get_diff_time() {
 }
 
 void delay_for_ms(int ms) {
-	delay_us += (ms * 1000 - diff.tv_usec) / 2;
-//	printf("%d ", delay_us);
+	delay_us += (ms * 1000 - diff.tv_usec) / 2.f;
 	if (delay_us > 0) {
-		usleep(delay_us);
+//		printf("%.3f %.3f ms\n", delay_us / 1000.f, diff.tv_usec / 1000.f);
+		usleep((int)delay_us);
 	} else {
 		printf("%.3f > %d ms!\n", diff.tv_usec / 1000.f, ms);
 		delay_us = 0;
@@ -111,9 +111,9 @@ void ak_init(mraa_i2c_context i2c_context) {
 	sensor_data_raw.magnet_gain.z = ((z_asa - 128) * 0.5 / 128.f + 1);
 	printf("asa xyz : %f %f %f\n", sensor_data_raw.magnet_gain.x, sensor_data_raw.magnet_gain.y, sensor_data_raw.magnet_gain.z);
 
-	sensor_data_raw.magnet_offset.x = 100;
-	sensor_data_raw.magnet_offset.y = 320;
-	sensor_data_raw.magnet_offset.z = -70;
+//	sensor_data_raw.magnet_offset.x = 100;
+//	sensor_data_raw.magnet_offset.y = 320;
+//	sensor_data_raw.magnet_offset.z = -70;
 }
 
 void ak_release(mraa_i2c_context i2c_context) {
@@ -148,6 +148,7 @@ void mpu_init(void) {
 	mpu_i2c_write_byte_data(i2c_context, MPU9250_I2C_ADDR, MPU9250_I2C_SLV0_REG, AK8963_ST1);
 	mpu_i2c_write_byte_data(i2c_context, MPU9250_I2C_ADDR, MPU9250_I2C_SLV0_CTRL, 0x89);// Enable 9 bytes read 10001001
 
+	printf("MPU9250 init finished!\n");
 	gettimeofday(&start, 0);
 }
 
@@ -178,6 +179,8 @@ void mpu_run(void) {
 		return;
 	}
 
+	// Difference Time
+	sensor_data.diff_sec = get_diff_time();
 
 	// Accelerometer
 	sensor_data_raw.accel_raw.x = (int16_t)((uint16_t)
@@ -212,8 +215,6 @@ void mpu_run(void) {
 	sensor_data.gyro.x = +(float)sensor_data_raw.gyro_raw.x * MPU9250G_2000dps * M_PI / 180.f;
 	sensor_data.gyro.y = +(float)sensor_data_raw.gyro_raw.z * MPU9250G_2000dps * M_PI / 180.f;
 	sensor_data.gyro.z = -(float)sensor_data_raw.gyro_raw.y * MPU9250G_2000dps * M_PI / 180.f;
-
-	sensor_data.diff_sec = get_diff_time();
 
 	// Magnetometer
 	uint8_t XL = bulk_data[15];
@@ -257,84 +258,6 @@ void mpu_run(void) {
 	sensor_data.magnet.y = -(float)(sensor_data_raw.magnet_raw.z - sensor_data_raw.magnet_offset.z) * sensor_data_raw.magnet_gain.z * MPU9250M_4800uT;
 	sensor_data.magnet.z = -(float)(sensor_data_raw.magnet_raw.x - sensor_data_raw.magnet_offset.x) * sensor_data_raw.magnet_gain.x * MPU9250M_4800uT;
 
-//	// Accelerometer
-//	sensor_data_raw.accel_raw.x = (int16_t)((uint16_t)
-//			mraa_i2c_read_byte_data(i2c_context, MPU9250_ACCEL_XOUT_H) << 8 |
-//			mraa_i2c_read_byte_data(i2c_context, MPU9250_ACCEL_XOUT_L));
-//	sensor_data_raw.accel_raw.y = (int16_t)((uint16_t)
-//			mraa_i2c_read_byte_data(i2c_context, MPU9250_ACCEL_YOUT_H) << 8 |
-//			mraa_i2c_read_byte_data(i2c_context, MPU9250_ACCEL_YOUT_L));
-//	sensor_data_raw.accel_raw.z = (int16_t)((uint16_t)
-//			mraa_i2c_read_byte_data(i2c_context, MPU9250_ACCEL_ZOUT_H) << 8 |
-//			mraa_i2c_read_byte_data(i2c_context, MPU9250_ACCEL_ZOUT_L));
-//	sensor_data.accel.x = +(float)sensor_data_raw.accel_raw.x * MPU9250A_2g;
-//	sensor_data.accel.y = +(float)sensor_data_raw.accel_raw.z * MPU9250A_2g;
-//	sensor_data.accel.z = -(float)sensor_data_raw.accel_raw.y * MPU9250A_2g;
-//
-//	// Temperature
-//	sensor_data_raw.temp_raw = (int16_t)((uint16_t)
-//			mraa_i2c_read_byte_data(i2c_context, MPU9250_TEMP_OUT_H) << 8 |
-//			mraa_i2c_read_byte_data(i2c_context, MPU9250_TEMP_OUT_L));
-////	sensor_data.temp = (float)sensor_data_raw.temp_raw * MPU9250T_85degC + 21.0f;
-//
-//	// Gyroscope
-//	sensor_data_raw.gyro_raw.x = (int16_t)((uint16_t)
-//			mraa_i2c_read_byte_data(i2c_context, MPU9250_GYRO_XOUT_H) << 8 |
-//			mraa_i2c_read_byte_data(i2c_context, MPU9250_GYRO_XOUT_L));
-//	sensor_data_raw.gyro_raw.y = (int16_t)((uint16_t)
-//			mraa_i2c_read_byte_data(i2c_context, MPU9250_GYRO_YOUT_H) << 8 |
-//			mraa_i2c_read_byte_data(i2c_context, MPU9250_GYRO_YOUT_L));
-//	sensor_data_raw.gyro_raw.z = (int16_t)((uint16_t)
-//			mraa_i2c_read_byte_data(i2c_context, MPU9250_GYRO_ZOUT_H) << 8 |
-//			mraa_i2c_read_byte_data(i2c_context, MPU9250_GYRO_ZOUT_L));
-//	sensor_data.gyro.x = +(float)sensor_data_raw.gyro_raw.x * MPU9250G_2000dps * M_PI / 180.f;
-//	sensor_data.gyro.y = +(float)sensor_data_raw.gyro_raw.z * MPU9250G_2000dps * M_PI / 180.f;
-//	sensor_data.gyro.z = -(float)sensor_data_raw.gyro_raw.y * MPU9250G_2000dps * M_PI / 180.f;
-//
-//	sensor_data.diff_sec = get_diff_time();
-//
-//	// Magnetometer
-//	uint8_t XL = mraa_i2c_read_byte_data(i2c_context, MPU9250_EXT_SENS_DATA_01);
-//	uint8_t XH = mraa_i2c_read_byte_data(i2c_context, MPU9250_EXT_SENS_DATA_02);
-//	uint8_t YL = mraa_i2c_read_byte_data(i2c_context, MPU9250_EXT_SENS_DATA_03);
-//	uint8_t YH = mraa_i2c_read_byte_data(i2c_context, MPU9250_EXT_SENS_DATA_04);
-//	uint8_t ZL = mraa_i2c_read_byte_data(i2c_context, MPU9250_EXT_SENS_DATA_05);
-//	uint8_t ZH = mraa_i2c_read_byte_data(i2c_context, MPU9250_EXT_SENS_DATA_06);
-//	sensor_data_raw.magnet_raw.x = (int16_t)(
-//			XL | ((uint16_t)
-//			XH << 8));
-//	sensor_data_raw.magnet_raw.y = (int16_t)(
-//			YL | ((uint16_t)
-//			YH << 8));
-//	sensor_data_raw.magnet_raw.z = (int16_t)(
-//			ZL | ((uint16_t)
-//			ZH << 8));
-//#ifdef FIND_MAG_RANGE
-//	if (x_min == 0x7FF8) x_min = sensor_data_raw.magnet_raw.x;
-//	if (x_max == 0x7FF8) x_max = sensor_data_raw.magnet_raw.x;
-//	if (y_min == 0x7FF8) y_min = sensor_data_raw.magnet_raw.y;
-//	if (y_max == 0x7FF8) y_max = sensor_data_raw.magnet_raw.y;
-//	if (z_min == 0x7FF8) z_min = sensor_data_raw.magnet_raw.z;
-//	if (z_max == 0x7FF8) z_max = sensor_data_raw.magnet_raw.z;
-//	if (x_min > sensor_data_raw.magnet_raw.x) x_min = sensor_data_raw.magnet_raw.x;
-//	if (x_max < sensor_data_raw.magnet_raw.x) x_max = sensor_data_raw.magnet_raw.x;
-//	if (y_min > sensor_data_raw.magnet_raw.y) y_min = sensor_data_raw.magnet_raw.y;
-//	if (y_max < sensor_data_raw.magnet_raw.y) y_max = sensor_data_raw.magnet_raw.y;
-//	if (z_min > sensor_data_raw.magnet_raw.z) z_min = sensor_data_raw.magnet_raw.z;
-//	if (z_max < sensor_data_raw.magnet_raw.z) z_max = sensor_data_raw.magnet_raw.z;
-//	printf("%d %d %d %d %d %d ---- ", x_min, x_max, y_min, y_max, z_min, z_max);
-//	sensor_data_raw.magnet_offset.x = (x_min + x_max) / 2;
-//	sensor_data_raw.magnet_offset.y = (y_min + y_max) / 2;
-//	sensor_data_raw.magnet_offset.z = (z_min + z_max) / 2;
-//	printf("%d %d %d\n",
-//			sensor_data_raw.magnet_offset.x,
-//			sensor_data_raw.magnet_offset.y,
-//			sensor_data_raw.magnet_offset.z);
-//#endif
-//	sensor_data.magnet.x = +(float)(sensor_data_raw.magnet_raw.y - sensor_data_raw.magnet_offset.y) * sensor_data_raw.magnet_gain.y * MPU9250M_4800uT;
-//	sensor_data.magnet.y = -(float)(sensor_data_raw.magnet_raw.z - sensor_data_raw.magnet_offset.z) * sensor_data_raw.magnet_gain.z * MPU9250M_4800uT;
-//	sensor_data.magnet.z = -(float)(sensor_data_raw.magnet_raw.x - sensor_data_raw.magnet_offset.x) * sensor_data_raw.magnet_gain.x * MPU9250M_4800uT;
-
 	/*
 	printf("tempr : %f degC\n",
 			sensor_data.temp);
@@ -350,7 +273,7 @@ void mpu_run(void) {
 			sensor_data.magnet.x,
 			sensor_data.magnet.y,
 			sensor_data.magnet.z);
-	*/
+//	*/
 
 	update_sensor_data(sensor_data);
 

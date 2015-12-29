@@ -51,7 +51,8 @@ void MahonyAHRSupdate(
 		Vector3f gyro,
 		Vector3f accel,
 		Vector3f magnet,
-		double diff_time, Quaternion *qua) {
+		double diff_time,
+		Quaternion *qua) {
 	float recipNorm;
     float qwqw, qwqz, qwqx, qwqy, qzqz, qzqx, qzqy, qxqx, qxqy, qyqy;
 	float hx, hz, by, bz;
@@ -157,7 +158,8 @@ void MahonyAHRSupdate(
 void MahonyAHRSupdateIMU(
 		Vector3f gyro,
 		Vector3f accel,
-		double diff_time, Quaternion *qua) {
+		double diff_time,
+		Quaternion *qua) {
 	float recipNorm;
 	float halfvx, halfvy, halfvz;
 	float halfex, halfey, halfez;

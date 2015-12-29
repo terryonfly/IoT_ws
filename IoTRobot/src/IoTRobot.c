@@ -10,7 +10,7 @@
 #include "I2CBus.h"
 #include "MPU9250.h"
 #include "PCA9685.h"
-#include "Poseture.h"
+#include "Posture.h"
 
 int running = 1;
 
@@ -96,7 +96,7 @@ int main() {
 	i2cbus_init();
 	mpu_init();
 	pca_init();
-	poseture_init();
+	posture_init();
 	float pwm_persent = 0.0f;
 	int bak = 0;
 	while (running) {
@@ -110,7 +110,7 @@ int main() {
 		}
 		pca_run(pwm_persent);
 	}
-	poseture_release();
+	posture_release();
 	pca_release();
 	mpu_release();
 	i2cbus_release();

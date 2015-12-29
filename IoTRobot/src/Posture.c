@@ -1,5 +1,5 @@
 ///*
-// * Poseture.c
+// * Posture.c
 // *
 // *  Created on: 2015年12月28日
 // *      Author: terry
@@ -13,10 +13,10 @@
 #include <pthread.h>
 #include <math.h>
 
-#include "Poseture.h"
 #include "StatusReport.h"
 
 #include "MahonyAHRS/MahonyAHRS.h"
+#include "Posture.h"
 
 Quaternion posture_quaternion = {1.f, 0.f, 0.f, 0.f};
 
@@ -27,10 +27,10 @@ SensorData sensor_data;
 int sensor_data_updated = 0;
 pthread_mutex_t update_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-int poseture_init(void) {
+int posture_init(void) {
 	int ret;
 	thread_running = 1;
-	ret = pthread_create(&thread_id, NULL, (void *)poseture_run, NULL);
+	ret = pthread_create(&thread_id, NULL, (void *)posture_run, NULL);
 	if (ret != 0) {
 		perror("Create pthread error!\n");
 		return -1;
@@ -38,13 +38,13 @@ int poseture_init(void) {
 	return 0;
 }
 
-void poseture_release(void) {
+void posture_release(void) {
 	printf("Release pthread\n");
 	thread_running = 0;
 	pthread_join(thread_id, NULL);
 }
 
-void poseture_run(void) {
+void posture_run(void) {
     while(thread_running){
     	while (!sensor_data_updated);
     	pthread_mutex_lock(&update_mutex);
@@ -53,15 +53,17 @@ void poseture_run(void) {
 				MahonyAHRSupdateIMU(
 						sensor_data.gyro,
 						sensor_data.accel,
-						sensor_data.diff_sec, &posture_quaternion);
+						sensor_data.diff_sec,
+						&posture_quaternion);
     		} else {// Magnet offset is not ready
 				MahonyAHRSupdate(
 						sensor_data.gyro,
 						sensor_data.accel,
 						sensor_data.magnet,
-						sensor_data.diff_sec, &posture_quaternion);
+						sensor_data.diff_sec,
+						&posture_quaternion);
     		}
-    		sync_posture(posture_quaternion);
+    		sync_posture(sensor_data, posture_quaternion);
 
     		sensor_data_updated = 0;
     	}

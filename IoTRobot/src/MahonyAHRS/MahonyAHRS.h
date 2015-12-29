@@ -28,12 +28,14 @@ void MahonyAHRSupdate(
 		Vector3f gyro,
 		Vector3f accel,
 		Vector3f magnet,
-		double diff_time, Quaternion *qua);
+		double diff_time,
+		Quaternion *qua);
 
 void MahonyAHRSupdateIMU(
 		Vector3f gyro,
 		Vector3f accel,
-		double diff_time, Quaternion *qua);
+		double diff_time,
+		Quaternion *qua);
 
 #endif
 //=====================================================================================================
