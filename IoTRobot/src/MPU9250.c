@@ -30,7 +30,6 @@ SensorData sensor_data;
 SensorDataRaw sensor_data_raw;
 
 struct timeval start, stop, diff;
-double diff_sec;
 int delay_us = 1;
 
 mraa_result_t mpu_i2c_write_byte_data(mraa_i2c_context i2c_context, const uint8_t dev_addr, const uint8_t reg_addr, const uint8_t data) {
@@ -80,7 +79,7 @@ int timeval_subtract(struct timeval* result, struct timeval* x, struct timeval* 
 	return 0;
 }
 
-void get_diff_time() {
+double get_diff_time() {
 	gettimeofday(&stop, 0);
 	if (timeval_subtract(&diff, &start, &stop) == -1 || diff.tv_sec > 0) {
 		diff.tv_sec = 0;
@@ -88,7 +87,7 @@ void get_diff_time() {
 	}
 	gettimeofday(&start, 0);
 //	printf("%.2f\n", diff.tv_usec / 1000.f);
-	diff_sec = diff.tv_usec / 1000000.0f;
+	return diff.tv_usec / 1000000.0f;
 }
 
 void delay_for_ms(int ms) {
@@ -202,10 +201,11 @@ void mpu_run(void) {
 	sensor_data_raw.gyro_raw.z = (int16_t)((uint16_t)
 			mraa_i2c_read_byte_data(i2c_context, MPU9250_GYRO_ZOUT_H) << 8 |
 			mraa_i2c_read_byte_data(i2c_context, MPU9250_GYRO_ZOUT_L));
-	get_diff_time();
-	sensor_data.gyro.x = +(float)sensor_data_raw.gyro_raw.x * MPU9250G_2000dps * M_PI / 180.f * diff_sec;
-	sensor_data.gyro.y = +(float)sensor_data_raw.gyro_raw.z * MPU9250G_2000dps * M_PI / 180.f * diff_sec;
-	sensor_data.gyro.z = -(float)sensor_data_raw.gyro_raw.y * MPU9250G_2000dps * M_PI / 180.f * diff_sec;
+	sensor_data.gyro.x = +(float)sensor_data_raw.gyro_raw.x * MPU9250G_2000dps * M_PI / 180.f;
+	sensor_data.gyro.y = +(float)sensor_data_raw.gyro_raw.z * MPU9250G_2000dps * M_PI / 180.f;
+	sensor_data.gyro.z = -(float)sensor_data_raw.gyro_raw.y * MPU9250G_2000dps * M_PI / 180.f;
+
+	sensor_data.diff_sec = get_diff_time();
 
 	// Magnetometer
 	uint8_t XL = mraa_i2c_read_byte_data(i2c_context, MPU9250_EXT_SENS_DATA_01);

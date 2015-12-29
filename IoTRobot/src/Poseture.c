@@ -16,6 +16,8 @@
 #include "Poseture.h"
 #include "StatusReport.h"
 
+#include "MahonyAHRS/MahonyAHRS.h"
+
 Quaternion accel_magnet_quaternion;
 
 Quaternion gyro_quaternion;
@@ -53,12 +55,20 @@ void poseture_run(void) {
 //    		euler_to_quaternion(sensor_data.gyro, &gyro_quaternion);
 //    		gyro_quaternion_integral = quaternion_multiply(gyro_quaternion_integral, gyro_quaternion);
 //    		sync_posture(gyro_quaternion_integral);
-    		Vector3f magnet_angles;
-    		magnet_angles.x = atan2(sensor_data.accel.z, sensor_data.accel.y);
-    		magnet_angles.y = atan2(sensor_data.magnet.x, sensor_data.magnet.z);
-    		magnet_angles.z = atan2(sensor_data.accel.y, sensor_data.accel.x);
-    		euler_to_quaternion(magnet_angles, &accel_magnet_quaternion);
+
+//    		Vector3f magnet_angles;
+//    		magnet_angles.x = atan2(sensor_data.accel.z, sensor_data.accel.y);
+//    		magnet_angles.y = atan2(sensor_data.magnet.x, sensor_data.magnet.z);
+//    		magnet_angles.z = atan2(sensor_data.accel.y, sensor_data.accel.x);
+//    		euler_to_quaternion(magnet_angles, &accel_magnet_quaternion);
+//    		sync_posture(accel_magnet_quaternion);
+
+    		MahonyAHRSupdateIMU(
+    				sensor_data.gyro.x, sensor_data.gyro.y, sensor_data.gyro.z,
+    				sensor_data.accel.x, sensor_data.accel.y, sensor_data.accel.z,
+					sensor_data.diff_sec, &accel_magnet_quaternion);
     		sync_posture(accel_magnet_quaternion);
+
     		sensor_data_updated = 0;
     	}
     	pthread_mutex_unlock(&update_mutex);

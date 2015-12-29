@@ -212,6 +212,7 @@ typedef struct {
 	Vector3f 	gyro;
 	Vector3f 	magnet;
 	float 		temp;
+	double		diff_sec;
 } SensorData;
 
 typedef struct {
@@ -223,7 +224,7 @@ typedef struct {
 	int16_t 	temp_raw;
 } SensorDataRaw;
 
-void get_diff_time();
+double get_diff_time();
 
 void delay_for_ms(int ms);
 
