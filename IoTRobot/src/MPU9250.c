@@ -16,7 +16,9 @@
 #include "I2CBus.h"
 #include "Posture.h"
 
-#define FIND_MAG_RANGE
+//#define FIND_MAG_RANGE
+//#define FINE_GYRO_ZERO
+
 #ifdef FIND_MAG_RANGE
 int16_t x_min = 0x7FF8;
 int16_t x_max = 0x7FF8;
@@ -24,6 +26,13 @@ int16_t y_min = 0x7FF8;
 int16_t y_max = 0x7FF8;
 int16_t z_min = 0x7FF8;
 int16_t z_max = 0x7FF8;
+#endif
+
+#ifdef FINE_GYRO_ZERO
+long gtx = 0;
+long gty = 0;
+long gtz = 0;
+long gtt = 0;
 #endif
 
 SensorData sensor_data;
@@ -110,6 +119,10 @@ void ak_init(mraa_i2c_context i2c_context) {
 	sensor_data_raw.magnet_gain.y = ((y_asa - 128) * 0.5 / 128.f + 1);
 	sensor_data_raw.magnet_gain.z = ((z_asa - 128) * 0.5 / 128.f + 1);
 	printf("asa xyz : %f %f %f\n", sensor_data_raw.magnet_gain.x, sensor_data_raw.magnet_gain.y, sensor_data_raw.magnet_gain.z);
+
+	sensor_data_raw.gyro_offset.x = -8;
+	sensor_data_raw.gyro_offset.y = 14;
+	sensor_data_raw.gyro_offset.z = 13;
 
 //	sensor_data_raw.magnet_offset.x = 100;
 //	sensor_data_raw.magnet_offset.y = 320;
@@ -212,9 +225,19 @@ void mpu_run(void) {
 	sensor_data_raw.gyro_raw.z = (int16_t)((uint16_t)
 			bulk_data[12] << 8 |
 			bulk_data[13]);
-	sensor_data.gyro.x = +(float)sensor_data_raw.gyro_raw.x * MPU9250G_2000dps * M_PI / 180.f;
-	sensor_data.gyro.y = +(float)sensor_data_raw.gyro_raw.z * MPU9250G_2000dps * M_PI / 180.f;
-	sensor_data.gyro.z = -(float)sensor_data_raw.gyro_raw.y * MPU9250G_2000dps * M_PI / 180.f;
+#ifdef FINE_GYRO_ZERO
+	gtx += sensor_data_raw.gyro_raw.x;
+	gty += sensor_data_raw.gyro_raw.y;
+	gtz += sensor_data_raw.gyro_raw.z;
+	gtt += 1;
+	printf("%d %d %d\n",
+			gtx / gtt,
+			gty / gtt,
+			gtz / gtt);
+#endif
+	sensor_data.gyro.x = +(float)(sensor_data_raw.gyro_raw.x - sensor_data_raw.gyro_offset.x) * MPU9250G_2000dps * M_PI / 180.f;
+	sensor_data.gyro.y = +(float)(sensor_data_raw.gyro_raw.z - sensor_data_raw.gyro_offset.z) * MPU9250G_2000dps * M_PI / 180.f;
+	sensor_data.gyro.z = -(float)(sensor_data_raw.gyro_raw.y - sensor_data_raw.gyro_offset.y) * MPU9250G_2000dps * M_PI / 180.f;
 
 	sensor_data.magnet_enable = bulk_data[14];
 	// Magnetometer
@@ -246,14 +269,15 @@ void mpu_run(void) {
 	if (y_max < sensor_data_raw.magnet_raw.y) y_max = sensor_data_raw.magnet_raw.y;
 	if (z_min > sensor_data_raw.magnet_raw.z) z_min = sensor_data_raw.magnet_raw.z;
 	if (z_max < sensor_data_raw.magnet_raw.z) z_max = sensor_data_raw.magnet_raw.z;
-//	printf("%d %d %d %d %d %d ---- ", x_min, x_max, y_min, y_max, z_min, z_max);
 	sensor_data_raw.magnet_offset.x = (x_min + x_max) / 2;
 	sensor_data_raw.magnet_offset.y = (y_min + y_max) / 2;
 	sensor_data_raw.magnet_offset.z = (z_min + z_max) / 2;
-//	printf("%d %d %d\n",
-//			sensor_data_raw.magnet_offset.x,
-//			sensor_data_raw.magnet_offset.y,
-//			sensor_data_raw.magnet_offset.z);
+	printf("%d %d %d %d %d %d ---- %d %d %d\n",
+			x_min, x_max, y_min,
+			y_max, z_min, z_max,
+			sensor_data_raw.magnet_offset.x,
+			sensor_data_raw.magnet_offset.y,
+			sensor_data_raw.magnet_offset.z);
 #endif
 	sensor_data.magnet.x = +(float)(sensor_data_raw.magnet_raw.y - sensor_data_raw.magnet_offset.y) * sensor_data_raw.magnet_gain.y * MPU9250M_4800uT;
 	sensor_data.magnet.y = -(float)(sensor_data_raw.magnet_raw.z - sensor_data_raw.magnet_offset.z) * sensor_data_raw.magnet_gain.z * MPU9250M_4800uT;
@@ -273,12 +297,13 @@ void mpu_run(void) {
 //			sensor_data.magnet.x,
 //			sensor_data.magnet.y,
 //			sensor_data.magnet.z);
-	if (sensor_data.magnet_enable) {
-		printf("magen : %8.2f %8.2f %8.2f uT\n",
-				sensor_data.magnet.x,
-				sensor_data.magnet.y,
-				sensor_data.magnet.z);
-	}
+
+//	if (sensor_data.magnet_enable) {
+//		printf("magen : %8.2f %8.2f %8.2f uT\n",
+//				sensor_data.magnet.x,
+//				sensor_data.magnet.y,
+//				sensor_data.magnet.z);
+//	}
 
 	update_sensor_data(sensor_data);
 

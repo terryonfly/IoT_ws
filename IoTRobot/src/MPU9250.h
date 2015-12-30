@@ -219,6 +219,7 @@ typedef struct {
 typedef struct {
 	Vector3s 	accel_raw;
 	Vector3s 	gyro_raw;
+	Vector3s 	gyro_offset;
 	Vector3s 	magnet_raw;
 	Vector3s 	magnet_offset;
 	Vector3f 	magnet_gain;

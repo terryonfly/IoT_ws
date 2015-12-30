@@ -50,16 +50,16 @@ void posture_run(void) {
     	pthread_mutex_lock(&update_mutex);
     	if (sensor_data_updated) {
     		if (0) {// Magnet offset is ready
-				MahonyAHRSupdateIMU(
-						sensor_data.gyro,
-						sensor_data.accel,
-						sensor_data.diff_sec,
-						&posture_quaternion);
-    		} else {// Magnet offset is not ready
 				MahonyAHRSupdate(
 						sensor_data.gyro,
 						sensor_data.accel,
 						sensor_data.magnet,
+						sensor_data.diff_sec,
+						&posture_quaternion);
+    		} else {// Magnet offset is not ready
+				MahonyAHRSupdateIMU(
+						sensor_data.gyro,
+						sensor_data.accel,
 						sensor_data.diff_sec,
 						&posture_quaternion);
     		}
