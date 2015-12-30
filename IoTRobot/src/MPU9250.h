@@ -208,6 +208,7 @@ typedef struct {
 #define AK8963_I2C_ADDR             0x0C
 
 typedef struct {
+	int			magnet_enable;
 	Vector3f 	accel;
 	Vector3f 	gyro;
 	Vector3f 	magnet;

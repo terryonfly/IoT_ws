@@ -49,7 +49,7 @@ void posture_run(void) {
     	while (!sensor_data_updated);
     	pthread_mutex_lock(&update_mutex);
     	if (sensor_data_updated) {
-    		if (1) {// Magnet offset is ready
+    		if (0) {// Magnet offset is ready
 				MahonyAHRSupdateIMU(
 						sensor_data.gyro,
 						sensor_data.accel,

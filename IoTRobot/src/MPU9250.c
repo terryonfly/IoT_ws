@@ -16,7 +16,7 @@
 #include "I2CBus.h"
 #include "Posture.h"
 
-//#define FIND_MAG_RANGE
+#define FIND_MAG_RANGE
 #ifdef FIND_MAG_RANGE
 int16_t x_min = 0x7FF8;
 int16_t x_max = 0x7FF8;
@@ -216,6 +216,7 @@ void mpu_run(void) {
 	sensor_data.gyro.y = +(float)sensor_data_raw.gyro_raw.z * MPU9250G_2000dps * M_PI / 180.f;
 	sensor_data.gyro.z = -(float)sensor_data_raw.gyro_raw.y * MPU9250G_2000dps * M_PI / 180.f;
 
+	sensor_data.magnet_enable = bulk_data[14];
 	// Magnetometer
 	uint8_t XL = bulk_data[15];
 	uint8_t XH = bulk_data[16];
@@ -245,35 +246,39 @@ void mpu_run(void) {
 	if (y_max < sensor_data_raw.magnet_raw.y) y_max = sensor_data_raw.magnet_raw.y;
 	if (z_min > sensor_data_raw.magnet_raw.z) z_min = sensor_data_raw.magnet_raw.z;
 	if (z_max < sensor_data_raw.magnet_raw.z) z_max = sensor_data_raw.magnet_raw.z;
-	printf("%d %d %d %d %d %d ---- ", x_min, x_max, y_min, y_max, z_min, z_max);
+//	printf("%d %d %d %d %d %d ---- ", x_min, x_max, y_min, y_max, z_min, z_max);
 	sensor_data_raw.magnet_offset.x = (x_min + x_max) / 2;
 	sensor_data_raw.magnet_offset.y = (y_min + y_max) / 2;
 	sensor_data_raw.magnet_offset.z = (z_min + z_max) / 2;
-	printf("%d %d %d\n",
-			sensor_data_raw.magnet_offset.x,
-			sensor_data_raw.magnet_offset.y,
-			sensor_data_raw.magnet_offset.z);
+//	printf("%d %d %d\n",
+//			sensor_data_raw.magnet_offset.x,
+//			sensor_data_raw.magnet_offset.y,
+//			sensor_data_raw.magnet_offset.z);
 #endif
 	sensor_data.magnet.x = +(float)(sensor_data_raw.magnet_raw.y - sensor_data_raw.magnet_offset.y) * sensor_data_raw.magnet_gain.y * MPU9250M_4800uT;
 	sensor_data.magnet.y = -(float)(sensor_data_raw.magnet_raw.z - sensor_data_raw.magnet_offset.z) * sensor_data_raw.magnet_gain.z * MPU9250M_4800uT;
 	sensor_data.magnet.z = -(float)(sensor_data_raw.magnet_raw.x - sensor_data_raw.magnet_offset.x) * sensor_data_raw.magnet_gain.x * MPU9250M_4800uT;
 
-	/*
-	printf("tempr : %f degC\n",
-			sensor_data.temp);
-	printf("accel : %8.2f %8.2f %8.2f g\n",
-			sensor_data.accel.x,
-			sensor_data.accel.y,
-			sensor_data.accel.z);
-	printf("gyros : %8.2f %8.2f %8.2f rad/s\n",
-			sensor_data.gyro.x,
-			sensor_data.gyro.y,
-			sensor_data.gyro.z);
-	printf("magen : %8.2f %8.2f %8.2f uT\n",
-			sensor_data.magnet.x,
-			sensor_data.magnet.y,
-			sensor_data.magnet.z);
-//	*/
+//	printf("tempr : %f degC\n",
+//			sensor_data.temp);
+//	printf("accel : %8.2f %8.2f %8.2f g\n",
+//			sensor_data.accel.x,
+//			sensor_data.accel.y,
+//			sensor_data.accel.z);
+//	printf("gyros : %8.2f %8.2f %8.2f rad/s\n",
+//			sensor_data.gyro.x,
+//			sensor_data.gyro.y,
+//			sensor_data.gyro.z);
+//	printf("magen : %8.2f %8.2f %8.2f uT\n",
+//			sensor_data.magnet.x,
+//			sensor_data.magnet.y,
+//			sensor_data.magnet.z);
+	if (sensor_data.magnet_enable) {
+		printf("magen : %8.2f %8.2f %8.2f uT\n",
+				sensor_data.magnet.x,
+				sensor_data.magnet.y,
+				sensor_data.magnet.z);
+	}
 
 	update_sensor_data(sensor_data);
 
