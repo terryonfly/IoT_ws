@@ -134,7 +134,7 @@ void ak_release(mraa_i2c_context i2c_context) {
 }
 
 void mpu_init(void) {
-	mraa_i2c_context i2c_context = i2cbus_get_instance();
+	mraa_i2c_context i2c_context = i2cbus_get_instance_mpu();
 	if (i2c_context == NULL) {
 		perror("Err : i2c_context = NULL");
 		return;
@@ -166,7 +166,7 @@ void mpu_init(void) {
 }
 
 void mpu_release(void) {
-	mraa_i2c_context i2c_context = i2cbus_get_instance();
+	mraa_i2c_context i2c_context = i2cbus_get_instance_mpu();
 	if (i2c_context == NULL) {
 		perror("Err : i2c_context = NULL");
 		return;
@@ -177,7 +177,7 @@ void mpu_release(void) {
 }
 
 void mpu_run(void) {
-	mraa_i2c_context i2c_context = i2cbus_get_instance();
+	mraa_i2c_context i2c_context = i2cbus_get_instance_mpu();
 	if (i2c_context == NULL) {
 		perror("Err : i2c_context = NULL");
 		return;

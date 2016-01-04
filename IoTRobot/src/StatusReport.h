@@ -19,4 +19,6 @@ void statusreport_run(void);
 
 void sync_posture(SensorData sd, Quaternion sensor_quaternion);
 
+void sync_action(float la, float ra, float lp, float rp);
+
 #endif /* STATUSREPORT_H_ */

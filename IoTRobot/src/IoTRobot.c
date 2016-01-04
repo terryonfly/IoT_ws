@@ -97,18 +97,14 @@ int main() {
 	mpu_init();
 	pca_init();
 	posture_init();
-	float pwm_persent = 0.0f;
-	int bak = 0;
+	pca_run(0.5, 0.5, 0.0, 0.0);
+	sleep(1);
+	float x = 0.0;
 	while (running) {
+		x += 0.0005;
+		if (x > 0.20) x = 0.0;
 		mpu_run();
-		if (bak) {
-			pwm_persent += 0.01f;
-			if (pwm_persent >= 1.0f) bak = !bak;
-		} else {
-			pwm_persent -= 0.01f;
-			if (pwm_persent <= 0.0f) bak = !bak;
-		}
-		pca_run(pwm_persent);
+		pca_run(0.5, 0.5, 0.0, x);
 	}
 	posture_release();
 	pca_release();

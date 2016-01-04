@@ -9,10 +9,10 @@
 #define MATH_H_
 
 typedef struct {
-	float w;
-	float x;
-	float y;
-	float z;
+	float 		w;
+	float 		x;
+	float 		y;
+	float 		z;
 } Quaternion;
 
 typedef struct {

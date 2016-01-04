@@ -12,6 +12,8 @@ void i2cbus_init(void);
 
 void i2cbus_release(void);
 
-mraa_i2c_context i2cbus_get_instance(void);
+mraa_i2c_context i2cbus_get_instance_mpu(void);
+
+mraa_i2c_context i2cbus_get_instance_pca(void);
 
 #endif /* I2CBUS_H_ */

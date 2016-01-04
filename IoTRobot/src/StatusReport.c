@@ -19,6 +19,7 @@
 pthread_t thread_id;
 int thread_running;
 
+float left_angle, right_angle, left_power, right_power;
 SensorData sensor_data;
 Quaternion sensor_quaternion;
 int need_send = 0;
@@ -54,7 +55,7 @@ void statusreport_run(void) {
     		need_send = 0;
         	pthread_mutex_unlock(&tcpsend_mutex);
 
-        	unsigned char msg[40];
+        	unsigned char msg[56];
         	int c_i = 0;
         	unsigned char *pdata;
         	int i;
@@ -124,7 +125,30 @@ void statusreport_run(void) {
 				}
         	}
 
-        	tcpserver_send(msg, 40);
+        	{/* Action */
+				float la = left_angle;
+				pdata = ((unsigned char *)&la);
+				for (i = 0; i < 4; i ++) {
+					msg[c_i ++] = *pdata ++;
+				}
+				float ra = right_angle;
+				pdata = ((unsigned char *)&ra);
+				for (i = 0; i < 4; i ++) {
+					msg[c_i ++] = *pdata ++;
+				}
+				float lp = left_power;
+				pdata = ((unsigned char *)&lp);
+				for (i = 0; i < 4; i ++) {
+					msg[c_i ++] = *pdata ++;
+				}
+				float rp = right_power;
+				pdata = ((unsigned char *)&rp);
+				for (i = 0; i < 4; i ++) {
+					msg[c_i ++] = *pdata ++;
+				}
+        	}
+
+        	tcpserver_send(msg, 56);
     	}
     }
 }
@@ -133,6 +157,16 @@ void sync_posture(SensorData sd, Quaternion qua) {
 	pthread_mutex_lock(&tcpsend_mutex);
 	sensor_data = sd;
 	sensor_quaternion = qua;
+//	need_send = 1;
+	pthread_mutex_unlock(&tcpsend_mutex);
+}
+
+void sync_action(float la, float ra, float lp, float rp) {
+	pthread_mutex_lock(&tcpsend_mutex);
+	left_angle = la;
+	right_angle = ra;
+	left_power = lp;
+	right_power = rp;
 	need_send = 1;
 	pthread_mutex_unlock(&tcpsend_mutex);
 }

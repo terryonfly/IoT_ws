@@ -13,22 +13,31 @@
 
 #include "I2CBus.h"
 
-#define I2C_BUS_ADDR 		0x06
-
-mraa_i2c_context i2c_context;
+mraa_i2c_context i2c_context_mpu;
+mraa_i2c_context i2c_context_pca;
 
 void i2cbus_init(void) {
-	i2c_context = mraa_i2c_init(I2C_BUS_ADDR);
-	mraa_i2c_frequency(i2c_context, MRAA_I2C_FAST);
+	i2c_context_mpu = mraa_i2c_init(0x06);
+	mraa_i2c_frequency(i2c_context_mpu, MRAA_I2C_FAST);
+	i2c_context_pca = mraa_i2c_init(0x01);
+	mraa_i2c_frequency(i2c_context_pca, MRAA_I2C_FAST);
 }
 
 void i2cbus_release(void) {
-	mraa_i2c_stop(i2c_context);
+	mraa_i2c_stop(i2c_context_mpu);
+	mraa_i2c_stop(i2c_context_pca);
 }
 
-mraa_i2c_context i2cbus_get_instance(void) {
-	if (i2c_context == NULL) {
+mraa_i2c_context i2cbus_get_instance_mpu(void) {
+	if (i2c_context_mpu == NULL) {
 		i2cbus_init();
 	}
-	return i2c_context;
+	return i2c_context_mpu;
+}
+
+mraa_i2c_context i2cbus_get_instance_pca(void) {
+	if (i2c_context_pca == NULL) {
+		i2cbus_init();
+	}
+	return i2c_context_pca;
 }

@@ -12,6 +12,6 @@ void pca_init(void);
 
 void pca_release(void);
 
-void pca_run(float pwm);
+void pca_run(float left_angle, float right_angle, float left_power, float right_power);
 
 #endif /* PCA9685_H_ */
