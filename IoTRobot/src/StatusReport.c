@@ -157,7 +157,6 @@ void sync_posture(SensorData sd, Quaternion qua) {
 	pthread_mutex_lock(&tcpsend_mutex);
 	sensor_data = sd;
 	sensor_quaternion = qua;
-//	need_send = 1;
 	pthread_mutex_unlock(&tcpsend_mutex);
 }
 
@@ -167,6 +166,11 @@ void sync_action(float la, float ra, float lp, float rp) {
 	right_angle = ra;
 	left_power = lp;
 	right_power = rp;
+	pthread_mutex_unlock(&tcpsend_mutex);
+}
+
+void sync_data_ready() {
+	pthread_mutex_lock(&tcpsend_mutex);
 	need_send = 1;
 	pthread_mutex_unlock(&tcpsend_mutex);
 }

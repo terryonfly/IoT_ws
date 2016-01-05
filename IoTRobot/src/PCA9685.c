@@ -81,7 +81,4 @@ void pca_run(float left_angle, float right_angle, float left_power, float right_
 	uint8_t *on_pdata_3 = ((uint8_t *)&on_val_3);
 	mraa_i2c_write_byte_data(i2c_context, *on_pdata_3 ++, 0x14);
 	mraa_i2c_write_byte_data(i2c_context, *on_pdata_3 ++, 0x15);
-
-	printf("%.6f -> %d %.6f -> %d \n",
-			left_power, on_val_2, right_power, on_val_3);
 }

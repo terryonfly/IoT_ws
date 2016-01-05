@@ -105,6 +105,7 @@ int main() {
 		if (x > 0.20) x = 0.0;
 		mpu_run();
 		pca_run(0.5, 0.5, 0.0, x);
+		sync_data_ready();
 	}
 	posture_release();
 	pca_release();
