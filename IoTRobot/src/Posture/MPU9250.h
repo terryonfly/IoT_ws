@@ -8,7 +8,7 @@
 #ifndef MPU9250_H_
 #define MPU9250_H_
 
-#include "Math.h"
+#include "../Common/Math.h"
 
 /*
 |     |      ACCELEROMETER      |        GYROSCOPE        |

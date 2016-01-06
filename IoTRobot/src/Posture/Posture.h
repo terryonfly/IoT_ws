@@ -10,12 +10,13 @@
 
 #include "MPU9250.h"
 
-int posture_init(void);
+extern SensorData sensor_data;
+extern Quaternion posture_quaternion;
 
-void posture_release(void);
+void pos_init(void);
 
-void posture_run(void);
+void pos_release(void);
 
-void update_sensor_data(SensorData sd);
+void pos_run(void);
 
 #endif /* POSTURE_H_ */

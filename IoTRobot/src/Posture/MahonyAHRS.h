@@ -13,7 +13,7 @@
 #ifndef MahonyAHRS_h
 #define MahonyAHRS_h
 
-#include "../Math.h"
+#include "../Common/Math.h"
 
 //----------------------------------------------------------------------------------------------------
 // Variable declaration

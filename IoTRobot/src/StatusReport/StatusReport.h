@@ -8,8 +8,8 @@
 #ifndef STATUSREPORT_H_
 #define STATUSREPORT_H_
 
-#include "Math.h"
-#include "MPU9250.h"
+#include "../Common/Math.h"
+#include "../Posture/MPU9250.h"
 
 int statusreport_init(void);
 

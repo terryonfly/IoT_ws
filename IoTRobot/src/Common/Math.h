@@ -8,6 +8,10 @@
 #ifndef MATH_H_
 #define MATH_H_
 
+#include <stdlib.h>
+#include <stdio.h>
+#include <math.h>
+
 typedef struct {
 	float 		w;
 	float 		x;

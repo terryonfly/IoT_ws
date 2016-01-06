@@ -17,9 +17,9 @@ mraa_i2c_context i2c_context_mpu;
 mraa_i2c_context i2c_context_pca;
 
 void i2cbus_init(void) {
-	i2c_context_mpu = mraa_i2c_init(0x06);
+	i2c_context_mpu = mraa_i2c_init(0x01);
 	mraa_i2c_frequency(i2c_context_mpu, MRAA_I2C_FAST);
-	i2c_context_pca = mraa_i2c_init(0x01);
+	i2c_context_pca = mraa_i2c_init(0x06);
 	mraa_i2c_frequency(i2c_context_pca, MRAA_I2C_FAST);
 }
 

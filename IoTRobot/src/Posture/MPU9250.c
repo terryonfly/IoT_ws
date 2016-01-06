@@ -13,8 +13,7 @@
 #include "mraa.h"
 
 #include "MPU9250.h"
-#include "I2CBus.h"
-#include "Posture.h"
+#include "../Common/I2CBus.h"
 
 //#define FIND_MAG_RANGE
 //#define FINE_GYRO_ZERO
@@ -34,6 +33,8 @@ long gty = 0;
 long gtz = 0;
 long gtt = 0;
 #endif
+
+uint8_t mpu_who_am_i = 0x00;
 
 SensorData sensor_data;
 SensorDataRaw sensor_data_raw;
@@ -139,6 +140,11 @@ void mpu_init(void) {
 		perror("Err : i2c_context = NULL");
 		return;
 	}
+	mpu_who_am_i = mpu_i2c_read_byte_data(i2c_context, MPU9250_I2C_ADDR, MPU9250_Device_ID);
+	if (mpu_who_am_i == 0x00) {
+		printf("MPU is not connected.\n");
+		return;
+	}
 	// Init MPU9250
 	mpu_i2c_write_byte_data(i2c_context, MPU9250_I2C_ADDR, MPU9250_PWR_MGMT_1, 0x80);// H_RESET = 1
 	usleep(1 * 1000);
@@ -166,6 +172,7 @@ void mpu_init(void) {
 }
 
 void mpu_release(void) {
+	if (mpu_who_am_i == 0x00) return;
 	mraa_i2c_context i2c_context = i2cbus_get_instance_mpu();
 	if (i2c_context == NULL) {
 		perror("Err : i2c_context = NULL");
@@ -177,6 +184,7 @@ void mpu_release(void) {
 }
 
 void mpu_run(void) {
+	if (mpu_who_am_i == 0x00) return;
 	mraa_i2c_context i2c_context = i2cbus_get_instance_mpu();
 	if (i2c_context == NULL) {
 		perror("Err : i2c_context = NULL");
@@ -304,8 +312,4 @@ void mpu_run(void) {
 //				sensor_data.magnet.y,
 //				sensor_data.magnet.z);
 //	}
-
-	update_sensor_data(sensor_data);
-
-	delay_for_ms(10);
 }
