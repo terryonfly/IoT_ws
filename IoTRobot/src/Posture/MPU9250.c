@@ -184,7 +184,10 @@ void mpu_release(void) {
 }
 
 void mpu_run(void) {
-	if (mpu_who_am_i == 0x00) return;
+	if (mpu_who_am_i == 0x00) {
+		get_diff_time();
+		return;
+	}
 	mraa_i2c_context i2c_context = i2cbus_get_instance_mpu();
 	if (i2c_context == NULL) {
 		perror("Err : i2c_context = NULL");
