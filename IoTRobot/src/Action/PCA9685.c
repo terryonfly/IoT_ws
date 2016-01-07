@@ -50,6 +50,9 @@ void pca_init(void) {
 	// 3 on
 	mraa_i2c_write_byte_data(i2c_context, 0x00, 0x12);
 	mraa_i2c_write_byte_data(i2c_context, 0x00, 0x13);
+
+	pca_run();
+	usleep(2 * 1000 * 1000);
 }
 
 void pca_release(void) {

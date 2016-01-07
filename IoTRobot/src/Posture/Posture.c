@@ -19,6 +19,7 @@
 #include "MahonyAHRS.h"
 
 Quaternion posture_quaternion = {1.f, 0.f, 0.f, 0.f};
+Vector3f posture_euler = {0.f, 0.f, 0.f};
 
 void pos_init(void) {
 
@@ -43,6 +44,7 @@ void pos_run(void) {
 				sensor_data.diff_sec,
 				&posture_quaternion);
 	}
+	quaternion_to_euler(posture_quaternion, &posture_euler);
 	sync_posture(sensor_data, posture_quaternion);
 }
 

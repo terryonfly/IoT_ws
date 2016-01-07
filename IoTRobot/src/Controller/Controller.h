@@ -13,6 +13,7 @@
 
 extern SensorData sensor_data;
 extern Quaternion posture_quaternion;
+extern Vector3f posture_euler;
 
 void ctl_init(void);
 

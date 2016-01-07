@@ -140,7 +140,7 @@ void mpu_init(void) {
 		perror("Err : i2c_context = NULL");
 		return;
 	}
-	mpu_who_am_i = mpu_i2c_read_byte_data(i2c_context, MPU9250_I2C_ADDR, MPU9250_Device_ID);
+	mpu_who_am_i = mpu_i2c_read_byte_data(i2c_context, MPU9250_I2C_ADDR, MPU9250_WHO_AM_I);
 	if (mpu_who_am_i == 0x00) {
 		printf("MPU is not connected.\n");
 		return;
