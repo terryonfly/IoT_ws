@@ -22,6 +22,8 @@ int thread_running;
 float left_angle, right_angle, left_power, right_power;
 SensorData sensor_data;
 Quaternion sensor_quaternion;
+float control_want;
+float control_real;
 int need_send = 0;
 pthread_mutex_t tcpsend_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -55,7 +57,7 @@ void statusreport_run(void) {
     		need_send = 0;
         	pthread_mutex_unlock(&tcpsend_mutex);
 
-        	unsigned char msg[56];
+        	unsigned char msg[64];
         	int c_i = 0;
         	unsigned char *pdata;
         	int i;
@@ -148,7 +150,20 @@ void statusreport_run(void) {
 				}
         	}
 
-        	tcpserver_send(msg, 56);
+        	{/* PID */
+				float cw = control_want;
+				pdata = ((unsigned char *)&cw);
+				for (i = 0; i < 4; i ++) {
+					msg[c_i ++] = *pdata ++;
+				}
+				float cr = control_real;
+				pdata = ((unsigned char *)&cr);
+				for (i = 0; i < 4; i ++) {
+					msg[c_i ++] = *pdata ++;
+				}
+        	}
+
+        	tcpserver_send(msg, 64);
     	}
     }
 }
@@ -166,6 +181,13 @@ void sync_action(float la, float ra, float lp, float rp) {
 	right_angle = ra;
 	left_power = lp;
 	right_power = rp;
+	pthread_mutex_unlock(&tcpsend_mutex);
+}
+
+void sync_pid(float cw, float cr) {
+	pthread_mutex_lock(&tcpsend_mutex);
+	control_want = cw;
+	control_real = cr;
 	pthread_mutex_unlock(&tcpsend_mutex);
 }
 
