@@ -57,7 +57,7 @@ void statusreport_run(void) {
     		need_send = 0;
         	pthread_mutex_unlock(&tcpsend_mutex);
 
-        	unsigned char msg[64];
+        	unsigned char msg[72];
         	int c_i = 0;
         	unsigned char *pdata;
         	int i;
@@ -150,20 +150,30 @@ void statusreport_run(void) {
 				}
         	}
 
-        	{/* PID */
-				float cw = control_want;
-				pdata = ((unsigned char *)&cw);
+        	{/* Status */
+				float sx = control_want;
+				pdata = ((unsigned char *)&sx);
 				for (i = 0; i < 4; i ++) {
 					msg[c_i ++] = *pdata ++;
 				}
-				float cr = control_real;
-				pdata = ((unsigned char *)&cr);
+				float sy = control_real;
+				pdata = ((unsigned char *)&sy);
+				for (i = 0; i < 4; i ++) {
+					msg[c_i ++] = *pdata ++;
+				}
+				float sz = 123.0f;
+				pdata = ((unsigned char *)&sz);
+				for (i = 0; i < 4; i ++) {
+					msg[c_i ++] = *pdata ++;
+				}
+				float sw = 0.0f;
+				pdata = ((unsigned char *)&sw);
 				for (i = 0; i < 4; i ++) {
 					msg[c_i ++] = *pdata ++;
 				}
         	}
 
-        	tcpserver_send(msg, 64);
+        	tcpserver_send(msg, 72);
     	}
     }
 }
