@@ -33,9 +33,9 @@ int main() {
 	tcpserver_init();
 	statusreport_init();
 	i2cbus_init();
+	pca_init();
 	mpu_init();
 	pos_init();
-	pca_init();
 	ctl_init();
 	while (running) {
 		mpu_run();

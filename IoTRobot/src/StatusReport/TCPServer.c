@@ -39,6 +39,11 @@ unsigned char rev_current_cmd;
 #define MAX_SEND_DATA_LEN 1024
 unsigned char send_data[MAX_SEND_DATA_LEN];
 
+float ctrl_x = 0.0;
+float ctrl_y = 0.0;
+float ctrl_z = 0.0;
+float ctrl_w = 0.0;
+
 int tcpserver_init(void) {
 	int ret;
 	thread_running = 1;
@@ -117,7 +122,7 @@ void tcpserver_run(void) {
 }
 
 void tcpserver_data_decode(unsigned char *buf, size_t len) {
-    int i, k;
+    int i;
     for (i = 0; i < len; i ++) {
     	if (rev_is_cmd) {
     		if (buf[i] == CMD_DATA_CONTENT || buf[i] == CMD_DATA_HEADER || buf[i] == CMD_DATA_FOOTER) {
@@ -137,9 +142,10 @@ void tcpserver_data_decode(unsigned char *buf, size_t len) {
     			break;
     		case CMD_DATA_FOOTER:
     			// buf[i] is footer data
-    			for (k = 0; k < rev_content_index; k ++)
-    				printf("%02x ", rev_content[k]);
-    			printf("\n");
+//    			for (k = 0; k < rev_content_index; k ++)
+//    				printf("%02x ", rev_content[k]);
+//    			printf("\n");
+                tcpserver_content_decode(rev_content, rev_content_index);
 
     			rev_content_index = 0;
     			break;
@@ -150,6 +156,35 @@ void tcpserver_data_decode(unsigned char *buf, size_t len) {
 			rev_is_cmd = 1;
     	}
     }
+}
+
+void tcpserver_content_decode(unsigned char *buf, size_t len)
+{
+    unsigned char i;
+    unsigned char* px = buf;
+    void *pf;
+
+    pf = &ctrl_x;
+    for(i = 0; i < 4; i ++) {
+        *((unsigned char*)pf+i) = *(px++);
+    }
+
+    pf = &ctrl_y;
+    for(i = 0; i < 4; i ++) {
+        *((unsigned char*)pf+i) = *(px++);
+    }
+
+    pf = &ctrl_z;
+    for(i = 0; i < 4; i ++) {
+        *((unsigned char*)pf+i) = *(px++);
+    }
+
+    pf = &ctrl_w;
+    for(i = 0; i < 4; i ++) {
+        *((unsigned char*)pf+i) = *(px++);
+    }
+
+    printf("PID : %10.6f %10.6f %10.6f \n", ctrl_x / 1000.0, ctrl_y / 1000.0, ctrl_z / 1000.0);
 }
 
 int tcpserver_send(unsigned char *buf, size_t len)

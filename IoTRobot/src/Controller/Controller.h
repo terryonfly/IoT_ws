@@ -15,6 +15,14 @@ extern SensorData sensor_data;
 extern Quaternion posture_quaternion;
 extern Vector3f posture_euler;
 
+extern float ctrl_x;
+extern float ctrl_y;
+extern float ctrl_z;
+extern float ctrl_w;
+
+extern float left_power_plus;
+extern float right_power_plus;
+
 void ctl_init(void);
 
 void ctl_release(void);
