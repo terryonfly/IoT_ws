@@ -23,7 +23,6 @@
 #define MOCK_MAX_CHANGE_TIME 5 * 100// s
 float mock_want = 0.0;
 int mock_change_time = 0;
-#define MOCK_MAX_POWER 100.0 // %
 
 // -45.0 ~ 45.0
 float left_angle = 0.0;
@@ -35,18 +34,17 @@ float right_power = 0.0;
 PID sPID_gyro_z;
 PID sPID_angle_z;
 
+#define ENGINE_MAX_POWER 100.0 // %
+
 #define PID_POWER_COEFFICIENT (float)0.5
 float pid_power_coefficient = 0.0;
 
-float base_power = 0.0;
-
-float current_ctrl_angle_z = 0.0;
+float base_power = 5.0;
 
 void ctl_init(void) {
 	pid_power_coefficient = PID_POWER_COEFFICIENT * 1000 * 2.0 / (left_power_plus + right_power_plus);
 	// Angle
-//	pid_init(&sPID_angle_z, 0.09, 0.0001, 0.05);
-	pid_init(&sPID_angle_z, ctrl_x / 1000.0, ctrl_y / 1000.0, ctrl_z / 1000.0);
+	pid_init(&sPID_angle_z, 0.09, 0.0001, 0.05);
 	// Gyro
 	pid_init(&sPID_gyro_z, 1.5, 0.005, 10.0);
 }
@@ -61,6 +59,7 @@ void ctl_run(void) {
 	sPID_angle_z.Integral = ctrl_y / 1000.0;
 	sPID_angle_z.Derivative = ctrl_z / 1000.0;
 	base_power = ctrl_w / 1000.0;
+
 	mock_change_time ++;
 	if (mock_change_time > MOCK_MAX_CHANGE_TIME) {
 		mock_change_time = 0;
@@ -72,6 +71,7 @@ void ctl_run(void) {
 		printf("->     %5.2f\n", mock_want);
 	}
 
+	// outside PID of Roll : angle
 	float posture_euler_z = posture_euler.z;
 	while (posture_euler_z > M_PI) posture_euler_z -= 2 * M_PI;
 	while (posture_euler_z < -M_PI) posture_euler_z += 2 * M_PI;
@@ -79,32 +79,16 @@ void ctl_run(void) {
 	if (err_euler > M_PI) posture_euler_z -= 2 * M_PI;
 	if (err_euler < -M_PI) posture_euler_z += 2 * M_PI;
 	double ctrl_angle_z = pid_run(&sPID_angle_z, posture_euler_z, mock_want);
-//	if (ctrl_angle_z > 4.0) {
-//		printf(">4\n");
-//		ctrl_angle_z = 4.0;
-//	}
-//	if (ctrl_angle_z < -4.0) {
-//		printf("<4\n");
-//		ctrl_angle_z = -4.0;
-//	}
-
+	// inside PID of Roll : gyro
 	double ctrl_power_z = pid_run(&sPID_gyro_z, sensor_data.gyro.z, ctrl_angle_z);
-	float left_power_tmp = base_power + ctrl_power_z * pid_power_coefficient;
-	float right_power_tmp = base_power - ctrl_power_z * pid_power_coefficient;
-	if (left_power_tmp < 0) {
-		left_power_tmp = 0.0;
-	}
-	if (left_power_tmp > MOCK_MAX_POWER) {
-		left_power_tmp = MOCK_MAX_POWER;
-	}
-	if (right_power_tmp < 0) {
-		right_power_tmp = 0.0;
-	}
-	if (right_power_tmp > MOCK_MAX_POWER) {
-		right_power_tmp = MOCK_MAX_POWER;
-	}
-	left_power = left_power_tmp;
-	right_power = right_power_tmp;
+	float left_power_axis_yaw = base_power + ctrl_power_z * pid_power_coefficient;
+	float right_power_axis_yaw = base_power - ctrl_power_z * pid_power_coefficient;
+	if (left_power_axis_yaw < 0) left_power_axis_yaw = 0.0;
+	if (left_power_axis_yaw > ENGINE_MAX_POWER) left_power_axis_yaw = ENGINE_MAX_POWER;
+	if (right_power_axis_yaw < 0) right_power_axis_yaw = 0.0;
+	if (right_power_axis_yaw > ENGINE_MAX_POWER) right_power_axis_yaw = ENGINE_MAX_POWER;
+	left_power = left_power_axis_yaw;
+	right_power = right_power_axis_yaw;
 
 	sync_pid(mock_want, posture_euler_z);
 }
