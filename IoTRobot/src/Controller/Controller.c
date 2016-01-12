@@ -45,8 +45,8 @@ float current_ctrl_angle_z = 0.0;
 void ctl_init(void) {
 	pid_power_coefficient = PID_POWER_COEFFICIENT * 1000 * 2.0 / (left_power_plus + right_power_plus);
 	// Angle
-	pid_init(&sPID_angle_z, 0.09, 0.0001, 0.05);
-//	pid_init(&sPID_angle_z, ctrl_x / 1000.0, ctrl_y / 1000.0, ctrl_z / 1000.0);
+//	pid_init(&sPID_angle_z, 0.09, 0.0001, 0.05);
+	pid_init(&sPID_angle_z, ctrl_x / 1000.0, ctrl_y / 1000.0, ctrl_z / 1000.0);
 	// Gyro
 	pid_init(&sPID_gyro_z, 1.5, 0.005, 10.0);
 }
@@ -56,21 +56,21 @@ void ctl_release(void) {
 }
 
 void ctl_run(void) {
-	mock_want = ctrl_x / 1000.0;
-//	sPID_angle_z.Proportion = ctrl_x / 1000.0;
-//	sPID_angle_z.Integral = ctrl_y / 1000.0;
-//	sPID_angle_z.Derivative = ctrl_z / 1000.0;
+//	mock_want = ctrl_x / 1000.0;
+	sPID_angle_z.Proportion = ctrl_x / 1000.0;
+	sPID_angle_z.Integral = ctrl_y / 1000.0;
+	sPID_angle_z.Derivative = ctrl_z / 1000.0;
 	base_power = ctrl_w / 1000.0;
-//	mock_change_time ++;
-//	if (mock_change_time > MOCK_MAX_CHANGE_TIME) {
-//		mock_change_time = 0;
-//		printf("%5.2f     ", mock_want);
-//		if (mock_want < 0)
-//			mock_want = MOCK_WANT_MAX;
-//		else
-//			mock_want = MOCK_WANT_MIN;
-//		printf("->     %5.2f\n", mock_want);
-//	}
+	mock_change_time ++;
+	if (mock_change_time > MOCK_MAX_CHANGE_TIME) {
+		mock_change_time = 0;
+		printf("%5.2f     ", mock_want);
+		if (mock_want < 0)
+			mock_want = MOCK_WANT_MAX;
+		else
+			mock_want = MOCK_WANT_MIN;
+		printf("->     %5.2f\n", mock_want);
+	}
 
 	float posture_euler_z = posture_euler.z;
 	while (posture_euler_z > M_PI) posture_euler_z -= 2 * M_PI;
@@ -79,7 +79,6 @@ void ctl_run(void) {
 	if (err_euler > M_PI) posture_euler_z -= 2 * M_PI;
 	if (err_euler < -M_PI) posture_euler_z += 2 * M_PI;
 	double ctrl_angle_z = pid_run(&sPID_angle_z, posture_euler_z, mock_want);
-	ctrl_angle_z /= 0.1;
 //	if (ctrl_angle_z > 4.0) {
 //		printf(">4\n");
 //		ctrl_angle_z = 4.0;
@@ -107,5 +106,5 @@ void ctl_run(void) {
 	left_power = left_power_tmp;
 	right_power = right_power_tmp;
 
-	sync_pid(ctrl_angle_z, sensor_data.gyro.z);
+	sync_pid(mock_want, posture_euler_z);
 }
