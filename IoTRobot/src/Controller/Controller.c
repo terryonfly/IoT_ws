@@ -81,14 +81,14 @@ void ctl_run(void) {
 	double ctrl_angle_z = pid_run(&sPID_angle_z, posture_euler_z, mock_want);
 	// inside PID of Roll : gyro
 	double ctrl_power_z = pid_run(&sPID_gyro_z, sensor_data.gyro.z, ctrl_angle_z);
-	float left_power_axis_yaw = base_power + ctrl_power_z * pid_power_coefficient;
-	float right_power_axis_yaw = base_power - ctrl_power_z * pid_power_coefficient;
-	if (left_power_axis_yaw < 0) left_power_axis_yaw = 0.0;
-	if (left_power_axis_yaw > ENGINE_MAX_POWER) left_power_axis_yaw = ENGINE_MAX_POWER;
-	if (right_power_axis_yaw < 0) right_power_axis_yaw = 0.0;
-	if (right_power_axis_yaw > ENGINE_MAX_POWER) right_power_axis_yaw = ENGINE_MAX_POWER;
-	left_power = left_power_axis_yaw;
-	right_power = right_power_axis_yaw;
+	float left_power_axis_roll = base_power + ctrl_power_z * pid_power_coefficient;
+	float right_power_axis_roll = base_power - ctrl_power_z * pid_power_coefficient;
+	if (left_power_axis_roll < 0) left_power_axis_roll = 0.0;
+	if (left_power_axis_roll > ENGINE_MAX_POWER) left_power_axis_roll = ENGINE_MAX_POWER;
+	if (right_power_axis_roll < 0) right_power_axis_roll = 0.0;
+	if (right_power_axis_roll > ENGINE_MAX_POWER) right_power_axis_roll = ENGINE_MAX_POWER;
+	left_power = left_power_axis_roll;
+	right_power = right_power_axis_roll;
 
 	sync_pid(mock_want, posture_euler_z);
 }
